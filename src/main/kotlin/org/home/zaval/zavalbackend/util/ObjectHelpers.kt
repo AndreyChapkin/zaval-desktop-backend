@@ -1,21 +1,30 @@
 package org.home.zaval.zavalbackend.util
 
-import kotlin.reflect.KMutableProperty0
-import kotlin.reflect.KProperty0
+import kotlin.reflect.KProperty1
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
 
-class Copier<T : Any>(private val obj: T) {
+fun <T : Any> T.makeCopy() = Copier<T, Any?>(this).createCopy()
+fun <T : Any> T.makeCopyWithOverriding(configurer: Copier<T, Any?>.() -> Unit) =
+    Copier<T, Any?>(this).copyWithOverriding(configurer)
+
+class Copier<T : Any, U>(private val obj: T) {
     private val overriding: MutableMap<String, Any> = mutableMapOf()
+    private lateinit var overrideName: String
     private val NULL_VALUE = "UNIQ_NULL_VALUE"
 
-    inline fun copyWithOverriding(configurer: Copier<T>.() -> Unit): T {
+    inline fun copyWithOverriding(configurer: Copier<T, U>.() -> Unit): T {
         this.configurer()
         return createCopy()
     }
 
-    infix fun <U> KProperty0<U>.overrideWith(value: U) {
-        overriding[this.name] = value ?: NULL_VALUE
+    fun <R> fill(property: KProperty1<T, R>): Copier<T, R> {
+        this.overrideName = property.name
+        return this as Copier<T, R>
+    }
+
+    fun withValue(value: U) {
+        this.overriding[this.overrideName] = value ?: this.NULL_VALUE
     }
 
     fun createCopy(): T {

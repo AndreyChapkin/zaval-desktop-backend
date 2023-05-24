@@ -6,11 +6,12 @@ import org.home.zaval.zavalbackend.model.value.TodoStatus
 import org.home.zaval.zavalbackend.model.view.TodoHierarchy
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.util.Copier
+import org.home.zaval.zavalbackend.util.makeCopyWithOverriding
 import org.home.zaval.zavalbackend.util.toShallowHierarchy
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
-import java.util.LinkedList
+import java.util.*
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -33,8 +34,8 @@ class TodoService(
             if (todo.parentId != null) {
                 val parentExists = todoRepository.isExist(todo.parentId)
                 if (!parentExists) {
-                    resultTodo = Copier(todo).copyWithOverriding {
-                        todo::parentId overrideWith null
+                    resultTodo = todo.makeCopyWithOverriding {
+                        fill(Todo::parentId).withValue(null)
                     }
                 }
             }
@@ -51,9 +52,9 @@ class TodoService(
     fun updateTodo(todoId: Long, todo: Todo): Todo? {
         val updatingTodo = getTodo(todoId)
         if (updatingTodo != null) {
-            val resultChildTodo = Copier(updatingTodo).copyWithOverriding {
-                updatingTodo::name overrideWith todo.name
-                updatingTodo::status overrideWith todo.status
+            val resultChildTodo = updatingTodo.makeCopyWithOverriding {
+                fill(Todo::name).withValue(todo.name)
+                fill(Todo::status).withValue(todo.status)
             }
             todoRepository.batched {
                 // also upgrade parents' statuses
@@ -101,8 +102,8 @@ class TodoService(
     fun moveToParent(moveTodoDto: MoveTodoDto) {
         val movingTodo = getTodo(moveTodoDto.todoId)
         if (movingTodo != null && getTodo(moveTodoDto.parentId) != null) {
-            val resultTodo = Copier(movingTodo).copyWithOverriding {
-                movingTodo::parentId overrideWith moveTodoDto.parentId
+            val resultTodo = movingTodo.makeCopyWithOverriding {
+                fill(Todo::parentId).withValue(moveTodoDto.parentId)
             }
             todoRepository.updateTodos(listOf(resultTodo))
         }
@@ -112,8 +113,8 @@ class TodoService(
         val updatedParents = mutableListOf<Todo>()
         for (parent in parents) {
             if (parent.status.priority < todo.status.priority) {
-                val updatedParent = Copier(parent).copyWithOverriding {
-                    parent::status overrideWith todo.status
+                val updatedParent = parent.makeCopyWithOverriding {
+                    fill(Todo::status).withValue(todo.status)
                 }
                 updatedParents.add(updatedParent)
             }

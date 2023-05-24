@@ -56,8 +56,8 @@ class TodoRepositoryLocal : TodoRepository, IdGenerator by GlobalIdSequence {
     override fun createTodos(todos: List<Todo>): List<Todo> {
         val resultTodos = mutableListOf<Todo>()
         for (todo in todos) {
-            val result = Copier(todo).copyWithOverriding {
-                todo::id overrideWith generateId()
+            val result = todo.makeCopyWithOverriding {
+                fill(Todo::id).withValue(generateId())
             }
             resultTodos.add(result)
         }
