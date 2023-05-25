@@ -1,10 +1,11 @@
 package org.home.zaval.zavalbackend.repository
 
+import org.home.zaval.zavalbackend.model.Article
 import org.home.zaval.zavalbackend.model.Todo
 import org.home.zaval.zavalbackend.model.value.TodoStatus
 import org.home.zaval.zavalbackend.store.GlobalIdSequence
 import org.home.zaval.zavalbackend.store.IdGenerator
-import org.home.zaval.zavalbackend.store.TodoStore
+import org.home.zaval.zavalbackend.store.LocalStore
 import org.home.zaval.zavalbackend.store.silentlyModify
 import org.home.zaval.zavalbackend.util.*
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
@@ -12,22 +13,17 @@ import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 @Component
-class TodoRepositoryLocal : TodoRepository, IdGenerator by GlobalIdSequence {
+@Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
+class TodoRepositoryLocal : RepositoryLocal(), TodoRepository, IdGenerator by GlobalIdSequence {
 
-    var listenToChanges: Boolean = true
-
-    val changeListener: (Map<String, Any?>) -> Unit = {
+    override val changeListener: (Map<String, Any?>) -> Unit = {
         if (listenToChanges) {
-            println("@@@ detected changes in store.")
+            println("@@@ ${TodoRepositoryLocal::class.simpleName}: detected changes in store.")
         }
     }
 
-    final val store = TodoStore().apply {
-        changesListener = this@TodoRepositoryLocal.changeListener
-    }
-
     init {
-        store.silentlyModify {
+        localStore.silentlyModify {
             todos = kotlin.run {
                 val taskA = Todo(generateId(), name = "Task A", status = TodoStatus.BACKLOG)
                 val taskAA = Todo(generateId(), name = "Task A-A", status = TodoStatus.BACKLOG, parentId = taskA.id)
@@ -50,7 +46,7 @@ class TodoRepositoryLocal : TodoRepository, IdGenerator by GlobalIdSequence {
     }
 
     override fun getTodo(todoId: Long): Todo? {
-        return store.todos.find { it.id == todoId }
+        return localStore.todos.find { it.id == todoId }
     }
 
     override fun createTodos(todos: List<Todo>): List<Todo> {
@@ -61,13 +57,13 @@ class TodoRepositoryLocal : TodoRepository, IdGenerator by GlobalIdSequence {
             }
             resultTodos.add(result)
         }
-        store.todos = store.todos.copyAndAppendAll(resultTodos)
+        localStore.todos = localStore.todos.copyAndAppendAll(resultTodos)
         return resultTodos
     }
 
     override fun updateTodos(todos: List<Todo>) {
         val resultTodos = mutableListOf<Todo>()
-        for (todo in store.todos) {
+        for (todo in localStore.todos) {
             var resultTodo = todo
             val indexOfUpdatedTodo = todos.indexOf(todo)
             if (indexOfUpdatedTodo > -1) {
@@ -75,19 +71,19 @@ class TodoRepositoryLocal : TodoRepository, IdGenerator by GlobalIdSequence {
             }
             resultTodos.add(resultTodo)
         }
-        store.todos = resultTodos
+        localStore.todos = resultTodos
     }
 
     override fun deleteTodos(todoIds: List<Long>) {
-        store.todos = store.todos.copyAndRemoveAll { todoIds.contains(it.id) }
+        localStore.todos = localStore.todos.copyAndRemoveAll { todoIds.contains(it.id) }
     }
 
     override fun getAllTodo(): List<Todo> {
-        return store.todos
+        return localStore.todos
     }
 
     override fun getAllChildrenOf(todoId: Long): List<Todo> {
-        return store.todos.filter { it.parentId == todoId }
+        return localStore.todos.filter { it.parentId == todoId }
     }
 
     override fun getAllParentsOf(todoId: Long): List<Todo> {
@@ -106,13 +102,6 @@ class TodoRepositoryLocal : TodoRepository, IdGenerator by GlobalIdSequence {
     }
 
     override fun isExist(todoId: Long): Boolean {
-        return store.todos.indexOfFirst { it.id == todoId } > 0
-    }
-
-    override fun batched(modifier: () -> Unit) {
-        this.listenToChanges = false
-        modifier()
-        this.listenToChanges = true
-        changeListener(store.valuesMap)
+        return localStore.todos.indexOfFirst { it.id == todoId } > 0
     }
 }

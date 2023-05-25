@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component
 
 @Component
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
-class TodoStore : ObservableStore() {
+class LocalStore : ObservableStore() {
     var todos by observedValue<List<Todo>>()
     var articles by observedValue<List<Article>>()
     var articlesToTodosConnections by observedValue<List<ArticleToTodoConnection>>()
