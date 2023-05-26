@@ -14,8 +14,8 @@ class TodoController(
     val todoService: TodoService
 ) {
     @PostMapping(consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun createTodos(@RequestBody todos: List<Todo>): ResponseEntity<List<Todo>> {
-        return ResponseEntity.ok(todoService.createTodos(todos))
+    fun createTodo(@RequestBody todo: Todo): ResponseEntity<Todo> {
+        return ResponseEntity.ok(todoService.createTodo(todo))
     }
 
     @GetMapping("/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -30,7 +30,7 @@ class TodoController(
 
     @DeleteMapping("/{id}")
     fun deleteTodo(@PathVariable("id") todoId: String): ResponseEntity<Unit> {
-        todoService.deleteTodos(listOf(todoId.toLong()))
+        todoService.deleteTodo(todoId.toLong())
         return ResponseEntity.ok(null)
     }
 

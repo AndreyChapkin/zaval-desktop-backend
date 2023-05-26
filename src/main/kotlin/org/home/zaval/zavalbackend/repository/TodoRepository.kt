@@ -1,24 +1,13 @@
 package org.home.zaval.zavalbackend.repository
 
 import org.home.zaval.zavalbackend.model.Todo
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.CrudRepository
+import org.springframework.data.repository.query.Param
+import org.springframework.stereotype.Repository
 
-interface TodoRepository {
-    fun getTodo(todoId: Long): Todo?
-
-    fun createTodos(todos: List<Todo>): List<Todo>
-
-    fun updateTodos(todo: List<Todo>)
-
-    fun deleteTodos(todoId: List<Long>)
-
-    fun getAllTodo(): List<Todo>
-
-    fun getAllChildrenOf(todoId: Long): List<Todo>
-
-    fun getAllParentsOf(todoId: Long): List<Todo>
-
-    fun isExist(todoId: Long): Boolean
-
-    // TODO bad decision for batching
-    fun batched(modifier: () -> Unit)
+@Repository
+interface TodoRepository : CrudRepository<Todo, Long> {
+    @Query("select t from Todo t where t.parent.id = :ID")
+    fun getAllChildrenOf(@Param("ID") todoId: Long): List<Todo>
 }

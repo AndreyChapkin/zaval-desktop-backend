@@ -4,3 +4,9 @@ springdoc:
   api-docs.path: /api-docs
   packages-to-scan: org.home.zaval.zavalbackend
   paths-to-match: /**
+
+spring:
+  jpa:
+#    generate-ddl: false
+    hibernate:
+      ddl-auto: update

@@ -3,7 +3,7 @@ package org.home.zaval.zavalbackend.repository
 import org.home.zaval.zavalbackend.model.Article
 import org.home.zaval.zavalbackend.model.ArticleToTodoConnection
 
-interface ArticleRepository {
+interface DeprArticleRepository {
     fun getArticle(articleId: Long): Article?
 
     fun createArticles(articles: List<Article>): List<Article>

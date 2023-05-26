@@ -5,6 +5,14 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.0"
 	kotlin("jvm") version "1.7.22"
 	kotlin("plugin.spring") version "1.7.22"
+	kotlin("plugin.jpa") version "1.7.22"
+	kotlin("plugin.allopen") version "1.7.22"
+}
+
+allOpen {
+	annotation("javax.persistence.Entity")
+	annotation("javax.persistence.Embeddable")
+	annotation("javax.persistence.MappedSuperclass")
 }
 
 group = "org.home.zaval"
@@ -19,6 +27,10 @@ val springdocOpenapiVersion = "2.1.0"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
+
+	// db
+	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+	runtimeOnly("org.hsqldb:hsqldb")
 
 	// region Kotlin specifics
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
