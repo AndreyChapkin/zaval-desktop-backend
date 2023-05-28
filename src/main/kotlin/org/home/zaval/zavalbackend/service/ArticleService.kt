@@ -1,15 +1,6 @@
 package org.home.zaval.zavalbackend.service
 
-import org.home.zaval.zavalbackend.model.Article
-import org.home.zaval.zavalbackend.model.ArticleToTodoConnection
-import org.home.zaval.zavalbackend.repository.DeprArticleRepository
-import org.home.zaval.zavalbackend.repository.DeprTodoRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
-import org.home.zaval.zavalbackend.service.value.ArticleChangeCommand
-import org.home.zaval.zavalbackend.util.makeCopyWithOverriding
-import org.springframework.beans.factory.config.ConfigurableBeanFactory
-import org.springframework.context.annotation.Scope
-import org.springframework.stereotype.Service
 
 //@Service
 //@Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)

@@ -10,3 +10,24 @@ spring:
 #    generate-ddl: false
     hibernate:
       ddl-auto: update
+    properties:
+      hibernate:
+        type: trace
+  jackson:
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+
+
+
+

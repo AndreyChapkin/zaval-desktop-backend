@@ -1,6 +1,7 @@
 package org.home.zaval.zavalbackend.repository
 
 import org.home.zaval.zavalbackend.model.Todo
+import org.home.zaval.zavalbackend.model.TodoParentPath
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
@@ -10,4 +11,16 @@ import org.springframework.stereotype.Repository
 interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select t from Todo t where t.parent.id = :ID")
     fun getAllChildrenOf(@Param("ID") todoId: Long): List<Todo>
+}
+
+@Repository
+interface TodoBranchRepository : CrudRepository<TodoParentPath, Long> {
+
+    @Query("select parentPath from TodoParentPath tb where tb.id = :ID")
+    fun getParentsPath(@Param("ID") todoId: Long): String
+
+    @Query("select tb from TodoParentPath tb where tb.parentPath like :PATH_PATTERN")
+    fun findAllLevelChildren(
+        @Param("PATH_PATTERN") pathPattern: String
+    ): List<TodoParentPath>
 }
