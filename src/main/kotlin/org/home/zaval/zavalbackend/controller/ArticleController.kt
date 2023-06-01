@@ -1,13 +1,5 @@
 package org.home.zaval.zavalbackend.controller
 
-import org.home.zaval.zavalbackend.dto.MoveTodoDto
-import org.home.zaval.zavalbackend.model.Article
-import org.home.zaval.zavalbackend.model.Todo
-import org.home.zaval.zavalbackend.model.view.TodoHierarchy
-import org.home.zaval.zavalbackend.service.ArticleService
-import org.home.zaval.zavalbackend.service.value.ArticleChangeCommand
-import org.springframework.http.MediaType
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController

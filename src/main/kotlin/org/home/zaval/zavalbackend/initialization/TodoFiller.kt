@@ -1,5 +1,6 @@
 package org.home.zaval.zavalbackend.initialization
 
+import org.home.zaval.zavalbackend.dto.CreateTodoDto
 import org.home.zaval.zavalbackend.model.Todo
 import org.home.zaval.zavalbackend.model.value.TodoStatus
 import org.home.zaval.zavalbackend.service.TodoService
@@ -12,7 +13,7 @@ class TodoFiller(
 ) : CommandLineRunner {
     override fun run(vararg args: String?) {
         val createdIds = mutableListOf<Long>()
-        val maxNumber = 9
+        val maxNumber = 6
         for (i in 0..maxNumber) {
             val parent = when {
                 i == 0 || i == maxNumber / 2 -> null
@@ -28,11 +29,10 @@ class TodoFiller(
                 )
             }
             todoService.createTodo(
-                Todo(
-                    id = null,
-                    name = "Test ${('A' + i).uppercaseChar()}",
+                CreateTodoDto(
+                    name = "Initial name",
                     status = TodoStatus.BACKLOG,
-                    parent = parent,
+                    parentId = parent?.id,
                 )
             ).also { createdIds.add(it.id!!) }
         }

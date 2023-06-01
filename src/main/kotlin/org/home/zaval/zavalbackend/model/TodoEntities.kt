@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference
 import org.hibernate.annotations.Parameter
 import org.home.zaval.zavalbackend.model.value.TodoStatus
 import javax.persistence.CascadeType
+import javax.persistence.Column
 import javax.persistence.Entity
 import javax.persistence.EnumType
 import javax.persistence.Enumerated
@@ -13,6 +14,7 @@ import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.JoinColumn
+import javax.persistence.Lob
 import javax.persistence.ManyToOne
 import javax.persistence.MapsId
 import javax.persistence.OneToOne
@@ -52,6 +54,8 @@ class TodoParentPath(
     @PrimaryKeyJoinColumn
     @JsonBackReference
     var todo: Todo,
+    @Lob
+    @Column(length = 10000)
     var parentPath: String,
 )
 

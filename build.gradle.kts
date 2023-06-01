@@ -30,7 +30,7 @@ dependencies {
 
 	// db
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	runtimeOnly("org.hsqldb:hsqldb")
+	runtimeOnly("org.apache.derby:derby")
 
 	// region Kotlin specifics
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
