@@ -1,13 +1,18 @@
 package org.home.zaval.zavalbackend.repository
 
 import org.home.zaval.zavalbackend.model.Todo
+import org.home.zaval.zavalbackend.model.TodoHistory
 import org.home.zaval.zavalbackend.model.TodoParentPath
+import org.home.zaval.zavalbackend.model.TodoShallowView
 import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import javax.persistence.SqlResultSetMapping
 
+// TODO: horrible projection decision
 @Repository
 interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select t from Todo t where t.parent.id = :ID")
@@ -16,8 +21,11 @@ interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select t from Todo t where t.parent is null")
     fun getAllTopTodos(): List<Todo>
 
-    @Query("select t from Todo t where t.status = :STATUS")
-    fun getAllTodosWithStatus(@Param("STATUS") status: TodoStatus): List<Todo>
+    @Query("select id, name, status, parent_id as parentId from Todo t where status = :STATUS", nativeQuery = true)
+    fun getAllTodosWithStatus(@Param("STATUS") status: String): List<TodoShallowView>
+
+    @Query("select id, name, status, parent_id as parentId from Todo t", nativeQuery = true)
+    fun getAllTodos(): List<TodoShallowView>
 }
 
 @Repository
@@ -30,4 +38,12 @@ interface TodoBranchRepository : CrudRepository<TodoParentPath, Long> {
     fun findAllLevelChildren(
         @Param("PATH_PATTERN") pathPattern: String
     ): List<TodoParentPath>
+}
+
+@Repository
+interface TodoHistoryRepository : CrudRepository<TodoHistory, Long> {
+
+    @Modifying
+    @Query("delete from TodoHistory th where th.id in :IDS")
+    fun deleteAllForIds(@Param("IDS") todoIds: List<Long>)
 }

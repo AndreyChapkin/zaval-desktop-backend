@@ -2,15 +2,19 @@ package org.home.zaval.zavalbackend.service
 
 import org.home.zaval.zavalbackend.dto.*
 import org.home.zaval.zavalbackend.model.Todo
+import org.home.zaval.zavalbackend.model.TodoHistory
 import org.home.zaval.zavalbackend.model.TodoParentPath
 import org.home.zaval.zavalbackend.model.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoBranchRepository
+import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
+import org.home.zaval.zavalbackend.util.mergeHistoryRecordsToPersist
 import org.home.zaval.zavalbackend.util.toDto
 import org.home.zaval.zavalbackend.util.toShallowHierarchy
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.*
 
 @Service
@@ -18,6 +22,7 @@ import java.util.*
 class TodoService(
     val todoRepository: TodoRepository,
     val todoBranchRepository: TodoBranchRepository,
+    val todoHistoryRepository: TodoHistoryRepository,
 ) {
 
     companion object {
@@ -31,7 +36,7 @@ class TodoService(
     }
 
     fun createTodo(todoDto: CreateTodoDto): TodoDto {
-        val creatingTodo = Todo(
+        val newTodo = Todo(
             id = null,
             name = todoDto.name,
             status = todoDto.status,
@@ -39,15 +44,17 @@ class TodoService(
                 Todo(id = todoDto.parentId, name = "", status = TodoStatus.BACKLOG)
             }
         )
-        val creatingTodoBranch = TodoParentPath(id = null, todo = creatingTodo, parentPath = "")
+        val newTodoBranch = TodoParentPath(id = null, parentPath = "")
         todoDto.parentId?.let {
             todoBranchRepository.findById(todoDto.parentId).orElse(null)
         }?.let { parentBranch ->
-            val creatingTodoParentPath = appendIdToParentPath(parentBranch.parentPath, parentBranch.id!!)
-            creatingTodoBranch.parentPath = creatingTodoParentPath
+            val parentTodoParentPath = appendIdToParentPath(parentBranch.parentPath, parentBranch.id!!)
+            newTodoBranch.parentPath = parentTodoParentPath
         }
-        creatingTodo.todoBranch = creatingTodoBranch
-        return todoRepository.save(creatingTodo).toDto()
+        val savedTodo = todoRepository.save(newTodo).toDto()
+        newTodoBranch.id = savedTodo.id
+        todoBranchRepository.save(newTodoBranch)
+        return savedTodo
     }
 
     fun getTodo(todoId: Long?): TodoDto? {
@@ -72,6 +79,7 @@ class TodoService(
     }
 
     // TODO optimize
+    @Transactional
     fun deleteTodo(todoId: Long) {
         val resultDeleteIds = mutableListOf<Long>()
         // delete children recursively
@@ -86,6 +94,8 @@ class TodoService(
             searchingQueue.addAll(curChildrenIds)
         }
         todoRepository.deleteAllById(resultDeleteIds)
+        todoBranchRepository.deleteAllById(resultDeleteIds)
+        todoHistoryRepository.deleteAllForIds(resultDeleteIds)
     }
 
     /**
@@ -98,8 +108,8 @@ class TodoService(
 
     fun getAllTodos(status: TodoStatus?): List<TodoDto> {
         return status
-            ?.let { todoRepository.getAllTodosWithStatus(status).map { it.toDto() } }
-            ?: todoRepository.findAll().map { it.toDto() }
+            ?.let { todoRepository.getAllTodosWithStatus(status.name.uppercase()).map { it.toDto() } }
+            ?: todoRepository.getAllTodos().map { it.toDto() }
     }
 
     fun moveTodo(moveTodoDto: MoveTodoDto) {
@@ -127,6 +137,39 @@ class TodoService(
                 childrenBranches.toMutableList().apply { add(movingTodoBranch) }
             )
         }
+    }
+
+    fun createTodoHistory(todoId: Long, todoHistoryDto: TodoHistoryDto): TodoHistoryDto? {
+        val owningTodoExists = todoRepository.existsById(todoId)
+        if (owningTodoExists) {
+            val newTodoHistory = TodoHistory(
+                id = todoId,
+                records = mergeHistoryRecordsToPersist(todoHistoryDto.records),
+            )
+            todoHistoryRepository.save(newTodoHistory)
+            return newTodoHistory.toDto()
+        }
+        return null
+    }
+
+    fun getTodoHistory(todoId: Long?): TodoHistoryDto? {
+        return if (todoId != null) {
+            todoHistoryRepository.findById(todoId).map { it.toDto() }.orElse(null)
+        } else null
+    }
+
+    fun updateTodoHistory(todoId: Long, todoHistoryDto: TodoHistoryDto): TodoHistoryDto? {
+        val updatingTodoHistory = todoHistoryRepository.findById(todoId).orElse(null)
+        if (updatingTodoHistory != null) {
+            updatingTodoHistory.records = mergeHistoryRecordsToPersist(todoHistoryDto.records)
+            todoHistoryRepository.save(updatingTodoHistory)
+            return updatingTodoHistory.toDto()
+        }
+        return null
+    }
+
+    fun deleteTodoHistory(todoId: Long) {
+        todoRepository.deleteById(todoId)
     }
 
     private fun loadTodo(todoId: Long?): Todo? = todoId?.let { todoRepository.findById(it).orElse(null) }
@@ -182,7 +225,6 @@ class TodoService(
         if (todo == null) {
             return null
         }
-        println("@@@ todoId = ${todo.id}")
         // initialize main node
         val result = todo.toShallowHierarchy()
         if (todo.id != TODO_ROOT.id) {

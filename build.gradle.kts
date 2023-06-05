@@ -23,7 +23,7 @@ repositories {
 	mavenCentral()
 }
 
-val springdocOpenapiVersion = "2.1.0"
+val springdocOpenapiVersion = "1.7.0"
 
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-web")
@@ -42,7 +42,7 @@ dependencies {
 	// endregion Development
 
 	// openapi
-//	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:$springdocOpenapiVersion")
+	implementation("org.springdoc:springdoc-openapi-ui:$springdocOpenapiVersion")
 
 	// region Test
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
