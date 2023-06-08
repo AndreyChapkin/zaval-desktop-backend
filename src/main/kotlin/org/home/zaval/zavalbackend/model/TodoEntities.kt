@@ -10,13 +10,6 @@ interface TodoShallowView {
     fun getParentId(): Long?
 }
 
-//class TodoShallowView(
-//    var id: Long,
-//    var name: String,
-//    var status: TodoStatus,
-//    var parentId: Long?
-//)
-
 @Entity
 class Todo(
     @Id

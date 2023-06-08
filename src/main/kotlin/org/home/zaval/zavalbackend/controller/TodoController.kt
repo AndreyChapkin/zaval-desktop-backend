@@ -50,18 +50,6 @@ class TodoController(
         return ResponseEntity.ok(null)
     }
 
-    @PostMapping(
-        "/{id}/history",
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun createHistory(
-        @PathVariable("id") todoId: String,
-        @RequestBody todoHistoryDto: TodoHistoryDto
-    ): ResponseEntity<TodoHistoryDto> {
-        return ResponseEntity.ok(todoService.createTodoHistory(todoId.toLong(), todoHistoryDto))
-    }
-
     @GetMapping("/{id}/history", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getTodoHistory(@PathVariable("id") todoId: String): ResponseEntity<TodoHistoryDto?> {
         return ResponseEntity.ok(todoService.getTodoHistory(todoId.toLong()))
@@ -77,11 +65,5 @@ class TodoController(
         @RequestBody todoHistoryDto: TodoHistoryDto
     ): ResponseEntity<TodoHistoryDto> {
         return ResponseEntity.ok(todoService.updateTodoHistory(todoId.toLong(), todoHistoryDto))
-    }
-
-    @DeleteMapping("/{id}/history")
-    fun deleteTodoHistory(@PathVariable("id") todoId: String): ResponseEntity<Unit> {
-        todoService.deleteTodoHistory(todoId.toLong())
-        return ResponseEntity.ok(null)
     }
 }

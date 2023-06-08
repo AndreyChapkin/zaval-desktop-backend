@@ -24,6 +24,9 @@ interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select id, name, status, parent_id as parentId from Todo t where status = :STATUS", nativeQuery = true)
     fun getAllTodosWithStatus(@Param("STATUS") status: String): List<TodoShallowView>
 
+    @Query("select id, name, status, parent_id as parentId from Todo t where id ", nativeQuery = true)
+    fun getAllLeavesTodos(): List<TodoShallowView>
+
     @Query("select id, name, status, parent_id as parentId from Todo t", nativeQuery = true)
     fun getAllTodos(): List<TodoShallowView>
 }

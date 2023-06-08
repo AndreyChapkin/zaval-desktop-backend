@@ -139,19 +139,6 @@ class TodoService(
         }
     }
 
-    fun createTodoHistory(todoId: Long, todoHistoryDto: TodoHistoryDto): TodoHistoryDto? {
-        val owningTodoExists = todoRepository.existsById(todoId)
-        if (owningTodoExists) {
-            val newTodoHistory = TodoHistory(
-                id = todoId,
-                records = mergeHistoryRecordsToPersist(todoHistoryDto.records),
-            )
-            todoHistoryRepository.save(newTodoHistory)
-            return newTodoHistory.toDto()
-        }
-        return null
-    }
-
     fun getTodoHistory(todoId: Long?): TodoHistoryDto? {
         return if (todoId != null) {
             todoHistoryRepository.findById(todoId).map { it.toDto() }.orElse(null)
@@ -159,17 +146,32 @@ class TodoService(
     }
 
     fun updateTodoHistory(todoId: Long, todoHistoryDto: TodoHistoryDto): TodoHistoryDto? {
+        // try to update
         val updatingTodoHistory = todoHistoryRepository.findById(todoId).orElse(null)
-        if (updatingTodoHistory != null) {
-            updatingTodoHistory.records = mergeHistoryRecordsToPersist(todoHistoryDto.records)
-            todoHistoryRepository.save(updatingTodoHistory)
-            return updatingTodoHistory.toDto()
+        if (todoHistoryDto.records.isNotEmpty()) {
+            if (updatingTodoHistory != null) {
+                updatingTodoHistory.records = mergeHistoryRecordsToPersist(todoHistoryDto.records)
+                todoHistoryRepository.save(updatingTodoHistory)
+                return updatingTodoHistory.toDto()
+            } else {
+                // try to create
+                val owningTodoExists = todoRepository.existsById(todoId)
+                if (owningTodoExists) {
+                    val newTodoHistory = TodoHistory(
+                        id = todoId,
+                        records = mergeHistoryRecordsToPersist(todoHistoryDto.records),
+                    )
+                    todoHistoryRepository.save(newTodoHistory)
+                    return newTodoHistory.toDto()
+                }
+            }
+        } else {
+            // try to delete
+            if (updatingTodoHistory != null) {
+                todoHistoryRepository.deleteById(todoId)
+            }
         }
         return null
-    }
-
-    fun deleteTodoHistory(todoId: Long) {
-        todoRepository.deleteById(todoId)
     }
 
     private fun loadTodo(todoId: Long?): Todo? = todoId?.let { todoRepository.findById(it).orElse(null) }
