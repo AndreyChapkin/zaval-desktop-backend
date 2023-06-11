@@ -37,6 +37,9 @@ interface TodoBranchRepository : CrudRepository<TodoParentPath, Long> {
     @Query("select parentPath from TodoParentPath tb where tb.id = :ID")
     fun getParentsPath(@Param("ID") todoId: Long): String
 
+    @Query("select tpp from TodoParentPath tpp where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
+    fun getAllTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>
+
     @Query("select tpp from TodoParentPath tpp where tpp.isLeave = true and tpp.id in (select t.id from Todo t where t.status = :STATUS)")
     fun getAllLeavesTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>
 

@@ -120,15 +120,15 @@ class TodoService(
     }
 
     fun getAllUpBranches(status: TodoStatus?): List<TodoHierarchyDto> {
-        val leavePaths = status
+        val todosWithStatusPaths = status
             ?.let {
-                todoBranchRepository.getAllLeavesTodoParentPathsWithTodoStatus(it)
+                todoBranchRepository.getAllTodoParentPathsWithTodoStatus(it)
             }
-            ?: todoBranchRepository.getAllLeavesTodoParentPaths()
-        val leavesIdsSet = leavePaths.map { it.id }.toSet()
-        val leaveBranchAndOrderedParentsIds = mutableMapOf<Long, List<Long>>()
+            ?: todoBranchRepository.findAll()
+        val withStatusIdsSet = todosWithStatusPaths.map { it.id }.toSet()
+        val withStatusAndOrderedParentsIds = mutableMapOf<Long, List<Long>>()
         val parentAndChildrenIds = mutableMapOf<Long, MutableList<Long>>()
-        val parentIdsSet = leavePaths.flatMap {
+        val parentIdsSet = todosWithStatusPaths.flatMap {
             // also construct parent -> children map
             val parentIds = extractIdsFromParentPath(it.parentPath)
             for (parentId in parentIds) {
@@ -137,24 +137,28 @@ class TodoService(
                     .apply { add(it.id!!) }
             }
             // also construct child -> parents map
-            leaveBranchAndOrderedParentsIds[it.id!!] = parentIds
+            withStatusAndOrderedParentsIds[it.id!!] = parentIds
             parentIds
         }.toSet()
-        val allIdsSet = leavesIdsSet.toMutableSet().apply {
+        // remove doubles from 'leave' ids set that are already in parent ids set
+        parentAndChildrenIds.keys.forEach {
+            withStatusAndOrderedParentsIds.remove(it)
+        }
+        val allIdsSet = withStatusIdsSet.toMutableSet().apply {
             addAll(parentIdsSet)
         }
         val allTodos = todoRepository.findAllById(allIdsSet)
-        val leaveTodos = mutableListOf<Todo>()
-        val leaveIdAndParentsTodos = mutableMapOf<Long, MutableList<Todo>>()
+        val withStatusTodos = mutableListOf<Todo>()
+        val withStatusIdAndParentsTodos = mutableMapOf<Long, MutableList<Todo>>()
         for (todo in allTodos) {
-            if (leaveBranchAndOrderedParentsIds.containsKey(todo.id)) {
+            if (withStatusAndOrderedParentsIds.containsKey(todo.id)) {
                 // save leave todoHierarchy
-                leaveTodos.add(todo)
+                withStatusTodos.add(todo)
             } else if (parentAndChildrenIds.containsKey(todo.id)) {
                 // pre-save parent for all its children
                 parentAndChildrenIds[todo.id]?.let { childrenIds ->
                     for (childId in childrenIds) {
-                        leaveIdAndParentsTodos
+                        withStatusIdAndParentsTodos
                             .getOrPut(childId) { mutableListOf() }
                             .apply { add(todo) }
                     }
@@ -162,17 +166,72 @@ class TodoService(
             }
         }
         // construct hierarchies
-        val result = leaveTodos.map { leaveTodo ->
-            val orderedParentTodos = leaveIdAndParentsTodos[leaveTodo.id]?.let { parentTodos ->
-                val orderedParentIds = leaveBranchAndOrderedParentsIds[leaveTodo.id] ?: emptyList()
+        val result = withStatusTodos.map { withStatusTodo ->
+            val orderedParentTodos = withStatusIdAndParentsTodos[withStatusTodo.id]?.let { parentTodos ->
+                val orderedParentIds = withStatusAndOrderedParentsIds[withStatusTodo.id] ?: emptyList()
                 orderedParentIds.mapNotNull { id ->
                     parentTodos.find { it.id == id }
                 }
             } ?: emptyList()
-            buildTodoHierarchy(leaveTodo, orderedParentTodos)
+            buildTodoHierarchy(withStatusTodo, orderedParentTodos)
         }
         return result
     }
+
+//    fun getAllUpBranches(status: TodoStatus?): List<TodoHierarchyDto> {
+//        val leavePaths = status
+//            ?.let {
+//                todoBranchRepository.getAllLeavesTodoParentPathsWithTodoStatus(it)
+//            }
+//            ?: todoBranchRepository.getAllLeavesTodoParentPaths()
+//        val leavesIdsSet = leavePaths.map { it.id }.toSet()
+//        val leaveBranchAndOrderedParentsIds = mutableMapOf<Long, List<Long>>()
+//        val parentAndChildrenIds = mutableMapOf<Long, MutableList<Long>>()
+//        val parentIdsSet = leavePaths.flatMap {
+//            // also construct parent -> children map
+//            val parentIds = extractIdsFromParentPath(it.parentPath)
+//            for (parentId in parentIds) {
+//                parentAndChildrenIds
+//                    .getOrPut(parentId) { mutableListOf() }
+//                    .apply { add(it.id!!) }
+//            }
+//            // also construct child -> parents map
+//            leaveBranchAndOrderedParentsIds[it.id!!] = parentIds
+//            parentIds
+//        }.toSet()
+//        val allIdsSet = leavesIdsSet.toMutableSet().apply {
+//            addAll(parentIdsSet)
+//        }
+//        val allTodos = todoRepository.findAllById(allIdsSet)
+//        val leaveTodos = mutableListOf<Todo>()
+//        val leaveIdAndParentsTodos = mutableMapOf<Long, MutableList<Todo>>()
+//        for (todo in allTodos) {
+//            if (leaveBranchAndOrderedParentsIds.containsKey(todo.id)) {
+//                // save leave todoHierarchy
+//                leaveTodos.add(todo)
+//            } else if (parentAndChildrenIds.containsKey(todo.id)) {
+//                // pre-save parent for all its children
+//                parentAndChildrenIds[todo.id]?.let { childrenIds ->
+//                    for (childId in childrenIds) {
+//                        leaveIdAndParentsTodos
+//                            .getOrPut(childId) { mutableListOf() }
+//                            .apply { add(todo) }
+//                    }
+//                }
+//            }
+//        }
+//        // construct hierarchies
+//        val result = leaveTodos.map { leaveTodo ->
+//            val orderedParentTodos = leaveIdAndParentsTodos[leaveTodo.id]?.let { parentTodos ->
+//                val orderedParentIds = leaveBranchAndOrderedParentsIds[leaveTodo.id] ?: emptyList()
+//                orderedParentIds.mapNotNull { id ->
+//                    parentTodos.find { it.id == id }
+//                }
+//            } ?: emptyList()
+//            buildTodoHierarchy(leaveTodo, orderedParentTodos)
+//        }
+//        return result
+//    }
 
     fun moveTodo(moveTodoDto: MoveTodoDto) {
         val movingTodo = loadTodo(moveTodoDto.todoId)
