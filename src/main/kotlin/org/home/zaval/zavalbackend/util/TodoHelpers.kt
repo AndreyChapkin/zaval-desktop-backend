@@ -9,7 +9,7 @@ import org.home.zaval.zavalbackend.model.TodoShallowView
 
 const val TODO_HISTORY_DELIMITER = "<;>"
 
-fun Todo.toShallowHierarchy() = TodoHierarchyDto(id = this.id!!, name = this.name, status = this.status)
+fun Todo.toShallowHierarchyDto() = TodoHierarchyDto(id = this.id!!, name = this.name, status = this.status)
 
 // TODO get rid of
 fun TodoShallowView.toDto() = TodoDto(

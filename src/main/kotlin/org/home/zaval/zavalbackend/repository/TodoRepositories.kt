@@ -24,8 +24,8 @@ interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select id, name, status, parent_id as parentId from Todo t where status = :STATUS", nativeQuery = true)
     fun getAllTodosWithStatus(@Param("STATUS") status: String): List<TodoShallowView>
 
-    @Query("select id, name, status, parent_id as parentId from Todo t where id ", nativeQuery = true)
-    fun getAllLeavesTodos(): List<TodoShallowView>
+    @Query("select t from Todo t where id in (select id from TodoParentPath tpp where tpp.isLeave = true)")
+    fun getAllLeavesTodos(): List<Todo>
 
     @Query("select id, name, status, parent_id as parentId from Todo t", nativeQuery = true)
     fun getAllTodos(): List<TodoShallowView>
@@ -36,6 +36,12 @@ interface TodoBranchRepository : CrudRepository<TodoParentPath, Long> {
 
     @Query("select parentPath from TodoParentPath tb where tb.id = :ID")
     fun getParentsPath(@Param("ID") todoId: Long): String
+
+    @Query("select tpp from TodoParentPath tpp where tpp.isLeave = true and tpp.id in (select t.id from Todo t where t.status = :STATUS)")
+    fun getAllLeavesTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>
+
+    @Query("select tpp from TodoParentPath tpp where tpp.isLeave = true")
+    fun getAllLeavesTodoParentPaths(): List<TodoParentPath>
 
     @Query("select tb from TodoParentPath tb where tb.parentPath like :PATH_PATTERN")
     fun findAllLevelChildren(

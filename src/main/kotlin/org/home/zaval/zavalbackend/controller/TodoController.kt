@@ -39,6 +39,11 @@ class TodoController(
         return ResponseEntity.ok(todoService.getAllTodos(status))
     }
 
+    @GetMapping("up-branch", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getAllTodoUpBranches(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<TodoHierarchyDto>> {
+        return ResponseEntity.ok(todoService.getAllUpBranches(status))
+    }
+
     @GetMapping(value = ["/hierarchy", "/hierarchy/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getTodoHierarchy(@PathVariable("id", required = false) todoId: String?): ResponseEntity<TodoHierarchyDto?> {
         return ResponseEntity.ok(todoService.getTodoBranch(todoId?.toLong()))

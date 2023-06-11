@@ -10,7 +10,7 @@ import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.util.mergeHistoryRecordsToPersist
 import org.home.zaval.zavalbackend.util.toDto
-import org.home.zaval.zavalbackend.util.toShallowHierarchy
+import org.home.zaval.zavalbackend.util.toShallowHierarchyDto
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
@@ -44,16 +44,23 @@ class TodoService(
                 Todo(id = todoDto.parentId, name = "", status = TodoStatus.BACKLOG)
             }
         )
-        val newTodoBranch = TodoParentPath(id = null, parentPath = "")
-        todoDto.parentId?.let {
+        val newTodoBranch = TodoParentPath(id = null, parentPath = "", isLeave = true)
+        val parentParentPath = todoDto.parentId?.let {
             todoBranchRepository.findById(todoDto.parentId).orElse(null)
         }?.let { parentBranch ->
             val parentTodoParentPath = appendIdToParentPath(parentBranch.parentPath, parentBranch.id!!)
             newTodoBranch.parentPath = parentTodoParentPath
+            parentBranch.isLeave = false
+            parentBranch
         }
         val savedTodo = todoRepository.save(newTodo).toDto()
         newTodoBranch.id = savedTodo.id
-        todoBranchRepository.save(newTodoBranch)
+        val savingPathes = mutableListOf(newTodoBranch).apply {
+            if (parentParentPath != null) {
+                add(parentParentPath)
+            }
+        }
+        todoBranchRepository.saveAll(savingPathes)
         return savedTodo
     }
 
@@ -108,8 +115,63 @@ class TodoService(
 
     fun getAllTodos(status: TodoStatus?): List<TodoDto> {
         return status
-            ?.let { todoRepository.getAllTodosWithStatus(status.name.uppercase()).map { it.toDto() } }
+            ?.let { todoRepository.getAllTodosWithStatus(it.name.uppercase()).map { it.toDto() } }
             ?: todoRepository.getAllTodos().map { it.toDto() }
+    }
+
+    fun getAllUpBranches(status: TodoStatus?): List<TodoHierarchyDto> {
+        val leavePaths = status
+            ?.let {
+                todoBranchRepository.getAllLeavesTodoParentPathsWithTodoStatus(it)
+            }
+            ?: todoBranchRepository.getAllLeavesTodoParentPaths()
+        val leavesIdsSet = leavePaths.map { it.id }.toSet()
+        val leaveBranchAndOrderedParentsIds = mutableMapOf<Long, List<Long>>()
+        val parentAndChildrenIds = mutableMapOf<Long, MutableList<Long>>()
+        val parentIdsSet = leavePaths.flatMap {
+            // also construct parent -> children map
+            val parentIds = extractIdsFromParentPath(it.parentPath)
+            for (parentId in parentIds) {
+                parentAndChildrenIds
+                    .getOrPut(parentId) { mutableListOf() }
+                    .apply { add(it.id!!) }
+            }
+            // also construct child -> parents map
+            leaveBranchAndOrderedParentsIds[it.id!!] = parentIds
+            parentIds
+        }.toSet()
+        val allIdsSet = leavesIdsSet.toMutableSet().apply {
+            addAll(parentIdsSet)
+        }
+        val allTodos = todoRepository.findAllById(allIdsSet)
+        val leaveTodos = mutableListOf<Todo>()
+        val leaveIdAndParentsTodos = mutableMapOf<Long, MutableList<Todo>>()
+        for (todo in allTodos) {
+            if (leaveBranchAndOrderedParentsIds.containsKey(todo.id)) {
+                // save leave todoHierarchy
+                leaveTodos.add(todo)
+            } else if (parentAndChildrenIds.containsKey(todo.id)) {
+                // pre-save parent for all its children
+                parentAndChildrenIds[todo.id]?.let { childrenIds ->
+                    for (childId in childrenIds) {
+                        leaveIdAndParentsTodos
+                            .getOrPut(childId) { mutableListOf() }
+                            .apply { add(todo) }
+                    }
+                }
+            }
+        }
+        // construct hierarchies
+        val result = leaveTodos.map { leaveTodo ->
+            val orderedParentTodos = leaveIdAndParentsTodos[leaveTodo.id]?.let { parentTodos ->
+                val orderedParentIds = leaveBranchAndOrderedParentsIds[leaveTodo.id] ?: emptyList()
+                orderedParentIds.mapNotNull { id ->
+                    parentTodos.find { it.id == id }
+                }
+            } ?: emptyList()
+            buildTodoHierarchy(leaveTodo, orderedParentTodos)
+        }
+        return result
     }
 
     fun moveTodo(moveTodoDto: MoveTodoDto) {
@@ -123,6 +185,7 @@ class TodoService(
             val finalParentBranch = todoBranchRepository.findById(finalParentTodo.id!!).get()
             // build new parent branch path for itself
             movingTodoBranch.parentPath = appendIdToParentPath(finalParentBranch.parentPath, finalParentTodo.id!!)
+            finalParentBranch.isLeave = false
             // build new parent branch paths for all children
             val childrenBranches = todoBranchRepository.findAllLevelChildren(
                 toParentPathPattern(movingTodo.id!!),
@@ -134,7 +197,10 @@ class TodoService(
                 )
             }
             todoBranchRepository.saveAll(
-                childrenBranches.toMutableList().apply { add(movingTodoBranch) }
+                childrenBranches.toMutableList().apply {
+                    add(movingTodoBranch)
+                    add(finalParentBranch)
+                }
             )
         }
     }
@@ -228,25 +294,34 @@ class TodoService(
             return null
         }
         // initialize main node
-        val result = todo.toShallowHierarchy()
+        val result = todo.toShallowHierarchyDto()
         if (todo.id != TODO_ROOT.id) {
             // initialize parents chain
             val parentsPath = todoBranchRepository.getParentsPath(todo.id!!)
             val parentTodos = todoRepository.findAllById(extractIdsFromParentPath(parentsPath))
             var curHierarchy = result
             parentTodos.reversed().forEach {
-                curHierarchy.parent = it.toShallowHierarchy()
+                curHierarchy.parent = it.toShallowHierarchyDto()
                 curHierarchy = curHierarchy.parent!!
             }
-            curHierarchy.parent = TODO_ROOT.toShallowHierarchy()
         }
         // initialize children
         result.children = (
             if (todo.id == TODO_ROOT.id) todoRepository.getAllTopTodos()
             else todoRepository.getAllChildrenOf(result.id)
             ).map {
-                it.toShallowHierarchy()
+                it.toShallowHierarchyDto()
             }.toTypedArray()
+        return result
+    }
+
+    private fun buildTodoHierarchy(todo: Todo, orderedParentTodos: Iterable<Todo>): TodoHierarchyDto {
+        val result = todo.toShallowHierarchyDto()
+        var curChild = result
+        for (parentTodo in orderedParentTodos.reversed()) {
+            curChild.parent = parentTodo.toShallowHierarchyDto()
+            curChild = curChild.parent!!
+        }
         return result
     }
 }

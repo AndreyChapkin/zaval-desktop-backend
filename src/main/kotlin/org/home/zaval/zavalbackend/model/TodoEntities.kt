@@ -32,6 +32,7 @@ class TodoParentPath(
     @Lob
     @Column(length = 10000)
     var parentPath: String,
+    var isLeave: Boolean,
 )
 
 @Entity
