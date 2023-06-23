@@ -5,5 +5,6 @@ enum class TodoStatus(val priority: Int) {
     BACKLOG(1),
     WILL_BE_BACK(2),
     PING_ME(3),
-    IN_PROGRESS(4),
+    NEXT_TO_TAKE(4),
+    IN_PROGRESS(5),
 }
