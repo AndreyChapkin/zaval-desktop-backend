@@ -46,7 +46,7 @@ class TodoController(
 
     @GetMapping(value = ["/hierarchy", "/hierarchy/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getTodoHierarchy(@PathVariable("id", required = false) todoId: String?): ResponseEntity<TodoHierarchyDto?> {
-        return ResponseEntity.ok(todoService.getTodoBranch(todoId?.toLong()))
+        return ResponseEntity.ok(todoService.getTodoHierarchy(todoId?.toLong()))
     }
 
     @PatchMapping("/move", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])

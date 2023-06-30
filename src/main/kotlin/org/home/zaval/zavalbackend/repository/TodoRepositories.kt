@@ -1,16 +1,12 @@
 package org.home.zaval.zavalbackend.repository
 
-import org.home.zaval.zavalbackend.model.Todo
-import org.home.zaval.zavalbackend.model.TodoHistory
-import org.home.zaval.zavalbackend.model.TodoParentPath
-import org.home.zaval.zavalbackend.model.TodoShallowView
+import org.home.zaval.zavalbackend.model.*
 import org.home.zaval.zavalbackend.model.value.TodoStatus
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
-import javax.persistence.SqlResultSetMapping
 
 // TODO: horrible projection decision
 @Repository
@@ -32,10 +28,13 @@ interface TodoRepository : CrudRepository<Todo, Long> {
 }
 
 @Repository
-interface TodoBranchRepository : CrudRepository<TodoParentPath, Long> {
+interface TodoParentPathRepository : CrudRepository<TodoParentPath, Long> {
 
-    @Query("select parentPath from TodoParentPath tb where tb.id = :ID")
-    fun getParentsPath(@Param("ID") todoId: Long): String
+//    @Query("select parentPath from TodoParentPath tb where tb.id = :ID")
+//    fun getParentsPath(@Param("ID") todoId: Long): String
+
+    @Query("select tpps from TodoParentPathSegment tpps where tpps.parentPath.id = :ID")
+    fun getParentPathSegments(@Param("ID") todoId: Long): List<TodoParentPathSegment>
 
     @Query("select tpp from TodoParentPath tpp where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
     fun getAllTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>
@@ -46,10 +45,16 @@ interface TodoBranchRepository : CrudRepository<TodoParentPath, Long> {
     @Query("select tpp from TodoParentPath tpp where tpp.isLeave = true")
     fun getAllLeavesTodoParentPaths(): List<TodoParentPath>
 
-    @Query("select tb from TodoParentPath tb where tb.parentPath like :PATH_PATTERN")
+//    @Query("select tb from TodoParentPath tb where tb.parentPath like :PATH_PATTERN")
+    @Query("select tb from TodoParentPath tb where tb.id in (select s.parentPath.id from TodoParentPathSegment s where s.parentId = :PARENT_ID)")
     fun findAllLevelChildren(
-        @Param("PATH_PATTERN") pathPattern: String
+        @Param("PARENT_ID") parentId: Long
     ): List<TodoParentPath>
+
+    @Query("select s.parentPath.id from TodoParentPathSegment s where s.parentId = :PARENT_ID")
+    fun findAllLevelChildrenIds(
+        @Param("PARENT_ID") parentId: Long
+    ): List<Long>
 }
 
 @Repository
