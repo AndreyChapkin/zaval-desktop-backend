@@ -410,14 +410,15 @@ class TodoService(
         val result = todo.toShallowHierarchyDto()
         if (todo.id != TODO_ROOT.id) {
             // initialize parents chain
-            val parentsPathSegments = todoParentPathRepository.getParentPathSegments(todo.id!!)
-//            val parentTodos = todoRepository.findAllById(extractIdsFromParentPath(parentsPath))
-            val parentTodos = todoRepository.findAllById(parentsPathSegments.map { it.parentId })
-            var curHierarchy = result
-            parentTodos.reversed().forEach {
-                curHierarchy.parent = it.toShallowHierarchyDto()
-                curHierarchy = curHierarchy.parent!!
-            }
+//            val parentsPathSegments = todoParentPathRepository.getParentPathSegments(todo.id!!)
+            // must be found
+            val parentsPath = todoParentPathRepository.findById(todo.id!!).get()
+            val orderedParentIds = parentsPath.segments.map { it.parentId }
+            val parentTodos = todoRepository.findAllById(orderedParentIds)
+            val orderedParentsHierarchiesList = orderedParentIds
+                .mapNotNull { id -> parentTodos.find { id == it.id } }
+                .map { it.toShallowHierarchyDto() }
+            result.parents = orderedParentsHierarchiesList
         }
         // initialize children
         result.children = (
@@ -425,17 +426,15 @@ class TodoService(
             else todoRepository.getAllChildrenOf(result.id)
             ).map {
                 it.toShallowHierarchyDto()
-            }.toTypedArray()
+            }
         return result
     }
 
     private fun buildTodoHierarchy(todo: Todo, orderedParentTodos: Iterable<Todo>): TodoHierarchyDto {
         val result = todo.toShallowHierarchyDto()
-        var curChild = result
-        for (parentTodo in orderedParentTodos.reversed()) {
-            curChild.parent = parentTodo.toShallowHierarchyDto()
-            curChild = curChild.parent!!
-        }
+        val orderedParentsHierarchiesList = orderedParentTodos
+            .map { it.toShallowHierarchyDto() }
+        result.parents = orderedParentsHierarchiesList
         return result
     }
 }

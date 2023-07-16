@@ -30,8 +30,8 @@ class TodoHierarchyDto(
     id: Long,
     val name: String,
     val status: TodoStatus,
-    var parent: TodoHierarchyDto? = null,
-    var children: Array<TodoHierarchyDto>? = null
+    var parents: List<TodoHierarchyDto> = listOf(),
+    var children: List<TodoHierarchyDto>? = listOf()
 ) : IdentifiedDto(id)
 
 class TodoHistoryDto(val todoId: Long, val records: List<String>)

@@ -25,9 +25,9 @@ class Todo(
     var parent: Todo? = null,
 )
 
-/** Take primary key of todoInstance as foreign key to use as primary key */
 @Entity
 class TodoParentPath(
+    /** Is filled manually with id of an according todo_instance */
     @Id
     var id: Long?,
     @OneToMany(mappedBy = "parentPath", fetch = FetchType.EAGER, cascade = [CascadeType.ALL])
