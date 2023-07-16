@@ -16,7 +16,6 @@ import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.*
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -243,6 +242,7 @@ class TodoService(
 //        return result
 //    }
 
+    @Transactional
     fun moveTodo(moveTodoDto: MoveTodoDto) {
         val movingTodo = loadTodo(moveTodoDto.todoId)
         val finalParentTodo = loadTodo(moveTodoDto.parentId)
@@ -254,35 +254,29 @@ class TodoService(
             val finalParentTodoParentPath = todoParentPathRepository.findById(finalParentTodo.id!!).get()
             // build new parent branch path for moving task
             movingTodoParentPath.apply {
+                val oldSegmentsIds = segments.map { it.id!! }
+                // NOTE: orphanRemoval delete each item with separate query
+                todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
                 segments.clear()
                 appendSegments(finalParentTodoParentPath.segments)
                 appendIdToSegments(finalParentTodo.id!!)
             }
-//            movingTodoBranch.parentPath = appendIdToParentPath(finalParentBranch.parentPath, finalParentTodo.id!!)
             finalParentTodoParentPath.isLeave = false
             // build new parent branch paths for all children
             val childrenTodoParentPaths = todoParentPathRepository.findAllLevelChildren(movingTodo.id!!)
-            childrenTodoParentPaths.forEach {
-                it.segments.clear()
-                it.appendSegments(movingTodoParentPath.segments)
-                it.appendIdsToParentPath(parentAndChildrenIdsInPath(it, movingTodo.id!!))
-//                it.parentPath = appendIdsToParentPath(
-//                    movingTodoBranch.parentPath,
-//                    parentAndChildrenIdsInPath(it.parentPath, movingTodo.id!!)
-//                )
-//                it.parentPath = appendIdsToParentPath(
-//                    movingTodoParentPath.parentPath,
-//                    parentAndChildrenIdsInPath(it.parentPath, movingTodo.id!!)
-//                )
+            childrenTodoParentPaths.forEach { todoParentPath ->
+                val parentWithChildrenIds = parentWithChildrenIdsInPath(todoParentPath, movingTodo.id!!)
+                val oldSegmentsIds = todoParentPath.segments.map { it.id!! }
+                // NOTE: orphanRemoval delete each item with separate query
+                todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                todoParentPath.segments.clear()
+                todoParentPath.appendSegments(movingTodoParentPath.segments)
+                todoParentPath.appendIdsToParentPath(parentWithChildrenIds)
             }
             todoParentPathRepository.saveAll(
                 mutableListOf(movingTodoParentPath)
                     .apply { add(finalParentTodoParentPath) }
                     .apply { addAll(childrenTodoParentPaths) }
-//                childrenTodoParentPaths.toMutableList().apply {
-//                    add(movingTodoParentPath)
-//                    add(finalParentTodoParentPath)
-//                }
             )
         }
     }
@@ -397,8 +391,8 @@ class TodoService(
 //        return emptyList()
 //    }
 
-    private fun parentAndChildrenIdsInPath(parentPath: TodoParentPath, parentId: Long): List<Long> {
-        val allIds = parentPath.segments.map { it.id!! }
+    private fun parentWithChildrenIdsInPath(parentPath: TodoParentPath, parentId: Long): List<Long> {
+        val allIds = parentPath.segments.map { it.parentId }
         val parentIndex = allIds.indexOf(parentId)
         if (parentIndex in 0..allIds.lastIndex) {
             return allIds.subList(parentIndex, allIds.size)

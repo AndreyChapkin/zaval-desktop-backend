@@ -13,7 +13,7 @@ class TodoFiller(
 ) : CommandLineRunner {
     override fun run(vararg args: String?) {
         val createdIds = mutableListOf<Long>()
-        val maxNumber = 6
+        val maxNumber = 10
         for (i in 0..maxNumber) {
             val parent = when {
                 i == 0 || i == maxNumber / 2 -> null
@@ -30,7 +30,7 @@ class TodoFiller(
             }
             todoService.createTodo(
                 CreateTodoDto(
-                    name = "Initial name",
+                    name = i.toString(),
                     status = TodoStatus.BACKLOG,
                     parentId = parent?.id,
                 )

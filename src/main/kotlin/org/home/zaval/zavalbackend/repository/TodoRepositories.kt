@@ -55,6 +55,12 @@ interface TodoParentPathRepository : CrudRepository<TodoParentPath, Long> {
     fun findAllLevelChildrenIds(
         @Param("PARENT_ID") parentId: Long
     ): List<Long>
+
+    @Modifying
+    @Query("delete from TodoParentPathSegment t where t.id in :IDS")
+    fun removeAllSegmentsByIds(
+        @Param("IDS") segmentsIds: List<Long>
+    )
 }
 
 @Repository

@@ -18,7 +18,7 @@ class TodoDto(
 data class CreateTodoDto(
     val name: String,
     val status: TodoStatus,
-    val parentId: Long?,
+    val parentId: Long? = null,
 )
 
 data class UpdateTodoDto(

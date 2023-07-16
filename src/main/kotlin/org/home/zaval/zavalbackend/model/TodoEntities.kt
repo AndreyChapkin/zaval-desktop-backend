@@ -44,7 +44,7 @@ class TodoParentPathSegment(
     var id: Long? = null,
     @ManyToOne
     @JoinColumn(name = "PARENT_PATH_ID", nullable = false)
-    var parentPath: TodoParentPath,
+    var parentPath: TodoParentPath?,
     var parentId: Long,
     var orderIndex: Int,
 )
