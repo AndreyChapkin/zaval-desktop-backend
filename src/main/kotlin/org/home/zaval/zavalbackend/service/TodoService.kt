@@ -254,10 +254,12 @@ class TodoService(
             val finalParentTodoParentPath = todoParentPathRepository.findById(finalParentTodo.id!!).get()
             // build new parent branch path for moving task
             movingTodoParentPath.apply {
-                val oldSegmentsIds = segments.map { it.id!! }
-                // NOTE: orphanRemoval delete each item with separate query
-                todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
-                segments.clear()
+                if (segments.isNotEmpty()) {
+                    val oldSegmentsIds = segments.map { it.id!! }
+                    // NOTE: orphanRemoval delete each item with separate query
+                    todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                    segments.clear()
+                }
                 appendSegments(finalParentTodoParentPath.segments)
                 appendIdToSegments(finalParentTodo.id!!)
             }
@@ -266,10 +268,12 @@ class TodoService(
             val childrenTodoParentPaths = todoParentPathRepository.findAllLevelChildren(movingTodo.id!!)
             childrenTodoParentPaths.forEach { todoParentPath ->
                 val parentWithChildrenIds = parentWithChildrenIdsInPath(todoParentPath, movingTodo.id!!)
-                val oldSegmentsIds = todoParentPath.segments.map { it.id!! }
-                // NOTE: orphanRemoval delete each item with separate query
-                todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
-                todoParentPath.segments.clear()
+                if (todoParentPath.segments.isNotEmpty()) {
+                    val oldSegmentsIds = todoParentPath.segments.map { it.id!! }
+                    // NOTE: orphanRemoval delete each item with separate query
+                    todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                    todoParentPath.segments.clear()
+                }
                 todoParentPath.appendSegments(movingTodoParentPath.segments)
                 todoParentPath.appendIdsToParentPath(parentWithChildrenIds)
             }
