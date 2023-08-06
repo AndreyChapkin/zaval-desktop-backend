@@ -1,8 +1,8 @@
 package org.home.zaval.zavalbackend.initialization
 
 import org.home.zaval.zavalbackend.dto.CreateTodoDto
-import org.home.zaval.zavalbackend.model.Todo
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.Todo
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.service.TodoService
 import org.springframework.boot.CommandLineRunner
 import org.springframework.stereotype.Component
@@ -13,7 +13,7 @@ class TodoFiller(
 ) : CommandLineRunner {
     override fun run(vararg args: String?) {
         val createdIds = mutableListOf<Long>()
-        val maxNumber = 10
+        val maxNumber = 50
         for (i in 0..maxNumber) {
             val parent = when {
                 i == 0 || i == maxNumber / 2 -> null

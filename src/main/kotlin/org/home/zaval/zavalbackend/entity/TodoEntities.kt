@@ -1,6 +1,6 @@
-package org.home.zaval.zavalbackend.model
+package org.home.zaval.zavalbackend.entity
 
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import javax.persistence.*
 
 interface TodoShallowView {

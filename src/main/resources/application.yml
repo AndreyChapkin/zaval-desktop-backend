@@ -6,24 +6,35 @@ springdoc:
   paths-to-match: /**
 
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/zaval-desktop
+    username: zaval-desktop
+    password: zaval-desktop
+    driver-class-name: org.postgresql.Driver
   jpa:
 #    generate-ddl: false
-    hibernate:
-      ddl-auto: update
+#    hibernate:
+#      ddl-auto: update
+#    properties:
+#      hibernate:
+#        type: trace
     properties:
       hibernate:
-        type: trace
+#        default_schema: zaval_desktop
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    generate-ddl: true
+    hibernate:
+      ddl-auto: create-drop
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false
 
-
-logging:
-  level:
-    org:
-      hibernate:
-        SQL: DEBUG
-        type:
-          descriptor:
-            sql:
-              BasicBinder: TRACE
+#logging:
+#  level:
+#    org:
+#      hibernate:
+#        SQL: DEBUG
+#        type:
+#          descriptor:
+#            sql:
+#              BasicBinder: TRACE

@@ -1,4 +1,4 @@
-package org.home.zaval.zavalbackend.model
+package org.home.zaval.zavalbackend.entity
 
 open class BaseEntity(val id: Long) {
     override fun equals(other: Any?): Boolean {

@@ -1,6 +1,6 @@
 package org.home.zaval.zavalbackend.dto
 
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.util.IdentifiedDto
 
 data class MoveTodoDto(

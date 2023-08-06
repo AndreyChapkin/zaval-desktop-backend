@@ -1,4 +1,4 @@
-package org.home.zaval.zavalbackend.model
+package org.home.zaval.zavalbackend.entity
 
 class Article(
     id: Long,

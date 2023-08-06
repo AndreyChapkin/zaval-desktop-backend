@@ -1,7 +1,7 @@
 package org.home.zaval.zavalbackend.todo
 
 import org.home.zaval.zavalbackend.dto.CreateTodoDto
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 
 fun createInitialTestTodos(): List<CreateTodoDto> {
     return listOf(

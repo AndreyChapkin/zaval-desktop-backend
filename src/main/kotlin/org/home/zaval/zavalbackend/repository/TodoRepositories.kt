@@ -1,7 +1,7 @@
 package org.home.zaval.zavalbackend.repository
 
-import org.home.zaval.zavalbackend.model.*
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.*
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -25,6 +25,12 @@ interface TodoRepository : CrudRepository<Todo, Long> {
 
     @Query("select id, name, status, parent_id as parentId from Todo t", nativeQuery = true)
     fun getAllTodos(): List<TodoShallowView>
+
+    @Query("select id, name, status, parent_id as parentId from todo t where id in :IDS", nativeQuery = true)
+    fun getAllShallowTodosByIds(@Param("IDS") ids: Iterable<Long>): List<TodoShallowView>
+
+    @Query("select id, name, status, parent_id as parentId from todo t where upper(name) like upper(:PATTERN)", nativeQuery = true)
+    fun findAllShallowTodosByNameFragment(@Param("PATTERN") pattern: String): List<TodoShallowView>
 }
 
 @Repository
@@ -36,7 +42,7 @@ interface TodoParentPathRepository : CrudRepository<TodoParentPath, Long> {
     @Query("select tpps from TodoParentPathSegment tpps where tpps.parentPath.id = :ID")
     fun getParentPathSegments(@Param("ID") todoId: Long): List<TodoParentPathSegment>
 
-    @Query("select tpp from TodoParentPath tpp where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
+    @Query("select tpp from TodoParentPath tpp join fetch tpp.segments where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
     fun getAllTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>
 
     @Query("select tpp from TodoParentPath tpp where tpp.isLeave = true and tpp.id in (select t.id from Todo t where t.status = :STATUS)")

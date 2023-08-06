@@ -30,7 +30,9 @@ dependencies {
 
 	// db
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-	runtimeOnly("org.apache.derby:derby")
+	testRuntimeOnly("org.apache.derby:derby")
+	implementation("org.postgresql:postgresql:42.6.0")
+
 
 	// region Kotlin specifics
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

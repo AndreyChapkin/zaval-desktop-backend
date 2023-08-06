@@ -1,7 +1,7 @@
 package org.home.zaval.zavalbackend.controller
 
 import org.home.zaval.zavalbackend.dto.*
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.service.TodoService
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -42,6 +42,16 @@ class TodoController(
     @GetMapping("up-branch", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getAllTodoUpBranches(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<TodoHierarchyDto>> {
         return ResponseEntity.ok(todoService.getAllUpBranches(status))
+    }
+
+    @GetMapping("with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<TodoDto>> {
+        return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(nameFragment))
+    }
+
+    @GetMapping("status-branches", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getAllTodoWithStatusBranches(@RequestParam("status") status: TodoStatus): ResponseEntity<List<TodoHierarchyDto>> {
+        return ResponseEntity.ok(todoService.getBranchesWithStatus(status))
     }
 
     @GetMapping(value = ["/hierarchy", "/hierarchy/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])

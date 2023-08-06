@@ -1,4 +1,4 @@
-package org.home.zaval.zavalbackend.model.value
+package org.home.zaval.zavalbackend.entity.value
 
 enum class TodoStatus(val priority: Int) {
     DONE(0),

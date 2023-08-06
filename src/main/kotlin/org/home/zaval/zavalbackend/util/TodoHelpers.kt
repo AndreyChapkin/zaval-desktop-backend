@@ -1,11 +1,11 @@
 package org.home.zaval.zavalbackend.util
 
 import org.home.zaval.zavalbackend.dto.TodoDto
-import org.home.zaval.zavalbackend.model.Todo
+import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.dto.TodoHierarchyDto
 import org.home.zaval.zavalbackend.dto.TodoHistoryDto
-import org.home.zaval.zavalbackend.model.TodoHistory
-import org.home.zaval.zavalbackend.model.TodoShallowView
+import org.home.zaval.zavalbackend.entity.TodoHistory
+import org.home.zaval.zavalbackend.entity.TodoShallowView
 
 const val TODO_HISTORY_DELIMITER = "<;>"
 
@@ -17,6 +17,12 @@ fun TodoShallowView.toDto() = TodoDto(
     name = this.getName(),
     status = this.getStatus(),
     parentId = this.getParentId()
+)
+
+fun TodoShallowView.toShallowHierarchyDto() = TodoHierarchyDto(
+    id = this.getId() ?: -100,
+    name = this.getName(),
+    status = this.getStatus(),
 )
 
 fun Todo.toDto() = TodoDto(

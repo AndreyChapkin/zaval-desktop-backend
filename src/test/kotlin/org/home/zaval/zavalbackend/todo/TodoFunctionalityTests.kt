@@ -3,7 +3,7 @@ package org.home.zaval.zavalbackend.todo
 import org.home.zaval.zavalbackend.dto.CreateTodoDto
 import org.home.zaval.zavalbackend.dto.MoveTodoDto
 import org.home.zaval.zavalbackend.dto.TodoDto
-import org.home.zaval.zavalbackend.model.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoParentPathRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
@@ -114,5 +114,28 @@ class TodoFunctionalityTests {
         val expectedChildrenIdsSet = setOf(createdFirstChildTodoDto.id, createdSecondChildTodoDto.id)
         val actualChildrenIdsSet = createdTodoHierarchyDto.children!!.map { it.id }.toSet()
         Assertions.assertEquals(expectedChildrenIdsSet, actualChildrenIdsSet)
+    }
+
+    @Test
+    fun findTodoWithNameFragment() {
+        // create main todo_instance
+        val createNewFirstDto = CreateTodoDto(
+            name = "New",
+            status = TodoStatus.BACKLOG,
+            parentId = initTodosNameAndIdMap["Third"]
+        )
+        this.todoService.createTodo(createNewFirstDto)
+        val createNewSecondDto = CreateTodoDto(
+            name = "Buy newspaper",
+            status = TodoStatus.BACKLOG,
+            parentId = initTodosNameAndIdMap["Third"]
+        )
+        this.todoService.createTodo(createNewSecondDto)
+        // find created todos
+        val foundTodoDtos = this.todoService.findAllShallowTodosByNameFragment("ne")
+        // assert
+        Assertions.assertEquals(2, foundTodoDtos.size)
+        Assertions.assertEquals("New", foundTodoDtos[0].name)
+        Assertions.assertEquals("Buy newspaper", foundTodoDtos[1].name)
     }
 }

@@ -1,0 +1,19 @@
+version: "3"
+
+services:
+  db:
+    container_name: zaval-desktop-backend_db
+    hostname: zaval_desktop_backend_db
+    environment:
+      POSTGRES_USER: zaval-desktop
+      POSTGRES_DB: zaval-desktop
+      POSTGRES_PASSWORD: zaval-desktop
+    image: "postgres:15.1-alpine"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    ports:
+      - "5432:5432"
