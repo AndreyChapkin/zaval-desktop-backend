@@ -12,7 +12,7 @@ class TodoDto(
     id: Long,
     val name: String,
     val status: TodoStatus,
-    val parentId: Long?,
+    val parentId: Long? = null,
 ) : IdentifiedDto(id)
 
 data class CreateTodoDto(
@@ -35,3 +35,8 @@ class TodoHierarchyDto(
 ) : IdentifiedDto(id)
 
 class TodoHistoryDto(val todoId: Long, val records: List<String>)
+
+class TodoBranchDto(
+    var parents: List<TodoDto>,
+    var leaves: List<TodoDto>,
+)

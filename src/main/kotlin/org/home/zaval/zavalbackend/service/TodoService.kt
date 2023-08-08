@@ -6,9 +6,7 @@ import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoParentPathRepository
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
-import org.home.zaval.zavalbackend.util.mergeHistoryRecordsToPersist
-import org.home.zaval.zavalbackend.util.toDto
-import org.home.zaval.zavalbackend.util.toShallowHierarchyDto
+import org.home.zaval.zavalbackend.util.*
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
@@ -129,27 +127,19 @@ class TodoService(
             .map { it.toDto() }
     }
 
-    fun getBranchesWithStatus(status: TodoStatus): List<TodoHierarchyDto> {
+    fun getBranchesWithStatus(status: TodoStatus): List<TodoBranchDto> {
         val todoParentPaths = todoParentPathRepository.getAllTodoParentPathsWithTodoStatus(status)
+        if (todoParentPaths.isEmpty()) {
+            return emptyList()
+        }
         val neededTodoIds = mutableSetOf<Long>()
         todoParentPaths.forEach { path ->
             neededTodoIds.add(path.id!!)
             path.segments.forEach { neededTodoIds.add(it.parentId) }
         }
         val todos = todoRepository.getAllShallowTodosByIds(neededTodoIds)
-        val parentIdAndChildrenResultDtos = mutableMapOf<Long, MutableList<TodoHierarchyDto>>()
-        todos.forEach {
-            val resultId = it.getId()!!
-            val resultChildrenDtoList = parentIdAndChildrenResultDtos.computeIfAbsent(resultId) { mutableListOf() }
-            val resultTodoDto = it.toShallowHierarchyDto().apply {
-                children = resultChildrenDtoList
-            }
-            val resultParentId = (it.getParentId() ?: TODO_ROOT.id)!!
-            val resultParentChildrenDtoList =
-                parentIdAndChildrenResultDtos.computeIfAbsent(resultParentId) { mutableListOf() }
-            resultParentChildrenDtoList.add(resultTodoDto)
-        }
-        return parentIdAndChildrenResultDtos[TODO_ROOT.id]!!
+        val rootHierarchyDtos = buildFullHierarchy(todos)
+        return extractBranches(rootHierarchyDtos)
     }
 
     fun getAllUpBranches(status: TodoStatus?): List<TodoHierarchyDto> {

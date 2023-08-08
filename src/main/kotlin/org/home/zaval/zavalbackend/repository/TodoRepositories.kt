@@ -42,7 +42,7 @@ interface TodoParentPathRepository : CrudRepository<TodoParentPath, Long> {
     @Query("select tpps from TodoParentPathSegment tpps where tpps.parentPath.id = :ID")
     fun getParentPathSegments(@Param("ID") todoId: Long): List<TodoParentPathSegment>
 
-    @Query("select tpp from TodoParentPath tpp join fetch tpp.segments where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
+    @Query("select tpp from TodoParentPath tpp left join fetch tpp.segments where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
     fun getAllTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>
 
     @Query("select tpp from TodoParentPath tpp where tpp.isLeave = true and tpp.id in (select t.id from Todo t where t.status = :STATUS)")

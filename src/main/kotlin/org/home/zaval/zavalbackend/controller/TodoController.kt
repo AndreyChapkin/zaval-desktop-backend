@@ -50,7 +50,7 @@ class TodoController(
     }
 
     @GetMapping("status-branches", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllTodoWithStatusBranches(@RequestParam("status") status: TodoStatus): ResponseEntity<List<TodoHierarchyDto>> {
+    fun getAllTodoWithStatusBranches(@RequestParam("status") status: TodoStatus): ResponseEntity<List<TodoBranchDto>> {
         return ResponseEntity.ok(todoService.getBranchesWithStatus(status))
     }
 
