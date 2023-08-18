@@ -39,11 +39,6 @@ class TodoController(
         return ResponseEntity.ok(todoService.getAllTodos(status))
     }
 
-    @GetMapping("up-branch", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllTodoUpBranches(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<TodoHierarchyDto>> {
-        return ResponseEntity.ok(todoService.getAllUpBranches(status))
-    }
-
     @GetMapping("with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<TodoDto>> {
         return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(nameFragment))

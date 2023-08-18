@@ -20,24 +20,9 @@ class TodoService(
     val todoHistoryRepository: TodoHistoryRepository,
 ) {
 
-    companion object {
-        val TODO_ROOT: Todo = Todo(
-            id = -1000,
-            name = "Root",
-            status = TodoStatus.BACKLOG,
-        )
-    }
-
     @Transactional
     fun createTodo(todoDto: CreateTodoDto): TodoDto {
-        val newTodo = Todo(
-            id = null,
-            name = todoDto.name,
-            status = todoDto.status,
-            parent = todoDto.parentId?.takeIf { it != TODO_ROOT.id }?.let {
-                Todo(id = todoDto.parentId, name = "", status = TodoStatus.BACKLOG)
-            }
-        )
+        val newTodo = todoDto.toEntity()
         val newTodoParentPath = TodoParentPath(id = null, segments = mutableListOf(), isLeave = true)
         val parentTodoParentPath = todoDto.parentId?.let {
             todoParentPathRepository.findById(it).orElse(null)
@@ -70,6 +55,7 @@ class TodoService(
         if (updatingTodo != null) {
             updatingTodo.name = todoDto.name
             updatingTodo.status = todoDto.status
+            updatingTodo.priority = todoDto.priority
             // also upgrade statuses of the parents
             // TODO optimize
             val updatedParentTodos = upgradeAllParentStatuses(updatingTodo)
@@ -91,21 +77,6 @@ class TodoService(
         todoRepository.deleteAllById(resultDeleteIds)
         todoParentPathRepository.deleteAllById(resultDeleteIds)
         todoHistoryRepository.deleteAllForIds(resultDeleteIds)
-//        val resultDeleteIds = mutableListOf<Long>()
-//        // delete children recursively
-//        val searchingQueue = LinkedList<Long>().apply {
-//            add(todoId)
-//        }
-//        while (searchingQueue.isNotEmpty()) {
-//            val curParentId = searchingQueue.removeFirst()
-//            resultDeleteIds.add(curParentId)
-//            // plan children deletion
-//            val curChildrenIds = todoRepository.getAllChildrenOf(curParentId).map { it.id as Long }
-//            searchingQueue.addAll(curChildrenIds)
-//        }
-//        todoRepository.deleteAllById(resultDeleteIds)
-//        todoParentPathRepository.deleteAllById(resultDeleteIds)
-//        todoHistoryRepository.deleteAllForIds(resultDeleteIds)
     }
 
     /**
@@ -140,65 +111,6 @@ class TodoService(
         val todos = todoRepository.getAllShallowTodosByIds(neededTodoIds)
         val rootHierarchyDtos = buildFullHierarchy(todos)
         return extractBranches(rootHierarchyDtos)
-    }
-
-    fun getAllUpBranches(status: TodoStatus?): List<TodoHierarchyDto> {
-        val todoParentPathsWithStatus = status
-            ?.let {
-                todoParentPathRepository.getAllTodoParentPathsWithTodoStatus(it)
-            }
-            ?: todoParentPathRepository.findAll()
-        val withStatusIdsSet = todoParentPathsWithStatus.map { it.id }.toSet()
-        val childIdWithStatusAndOrderedParentsIds = mutableMapOf<Long, List<Long>>()
-        val parentIdAndChildrenIds = mutableMapOf<Long, MutableList<Long>>()
-        val allParentIdsSet = todoParentPathsWithStatus.flatMap {
-            // also construct parent -> children map
-            val orderedParentIds = it.segments.map { segment -> segment.parentId!! }
-            for (parentId in orderedParentIds) {
-                parentIdAndChildrenIds
-                    .getOrPut(parentId) { mutableListOf() }
-                    .apply { add(it.id!!) }
-            }
-            // also construct child -> parents map
-            childIdWithStatusAndOrderedParentsIds[it.id!!] = orderedParentIds
-            orderedParentIds
-        }.toSet()
-        // remove doubles from 'leave' ids set that are already in parent ids set
-        // think about situation when there is parent with status, but all its children with another status
-        parentIdAndChildrenIds.keys.forEach {
-            childIdWithStatusAndOrderedParentsIds.remove(it)
-        }
-        val allIdsSet = withStatusIdsSet.toMutableSet().apply {
-            addAll(allParentIdsSet)
-        }
-        val allTodos = todoRepository.findAllById(allIdsSet)
-        val childrenWithStatusTodos = mutableListOf<Todo>()
-        val childWithStatusIdAndParentsTodos = mutableMapOf<Long, MutableList<Todo>>()
-        for (todo in allTodos) {
-            if (childIdWithStatusAndOrderedParentsIds.containsKey(todo.id)) {
-                // save leave todoHierarchy
-                childrenWithStatusTodos.add(todo)
-            } else if (parentIdAndChildrenIds.containsKey(todo.id)) {
-                // pre-save parent for all its children
-                parentIdAndChildrenIds[todo.id]?.let { childrenIds ->
-                    for (childId in childrenIds) {
-                        childWithStatusIdAndParentsTodos
-                            .getOrPut(childId) { mutableListOf() }
-                            .apply { add(todo) }
-                    }
-                }
-            }
-        }
-        // construct hierarchies
-        val result = childrenWithStatusTodos.map { childWithStatusTodo ->
-            val orderedParentTodos = childWithStatusIdAndParentsTodos[childWithStatusTodo.id]
-                ?.let { parentTodos ->
-                    val orderedParentIds = childIdWithStatusAndOrderedParentsIds[childWithStatusTodo.id] ?: emptyList()
-                    orderedParentIds.mapNotNull { id -> parentTodos.find { it.id == id } }
-                } ?: emptyList()
-            buildTodoHierarchy(childWithStatusTodo, orderedParentTodos)
-        }
-        return result
     }
 
     @Transactional

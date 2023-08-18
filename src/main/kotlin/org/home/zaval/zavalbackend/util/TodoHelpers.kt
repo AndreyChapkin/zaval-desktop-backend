@@ -1,45 +1,71 @@
 package org.home.zaval.zavalbackend.util
 
-import org.home.zaval.zavalbackend.dto.TodoBranchDto
-import org.home.zaval.zavalbackend.dto.TodoDto
-import org.home.zaval.zavalbackend.dto.TodoHierarchyDto
-import org.home.zaval.zavalbackend.dto.TodoHistoryDto
+import org.home.zaval.zavalbackend.dto.*
 import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.TodoHistory
-import org.home.zaval.zavalbackend.entity.TodoShallowView
+import org.home.zaval.zavalbackend.entity.TodoLightView
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
-import org.home.zaval.zavalbackend.service.TodoService
 import java.util.*
 
 const val TODO_HISTORY_DELIMITER = "<;>"
 
-fun Todo.toShallowHierarchyDto() = TodoHierarchyDto(id = this.id!!, name = this.name, status = this.status)
+val TODO_ROOT: Todo = Todo(
+    id = -1000,
+    name = "Root",
+    status = TodoStatus.BACKLOG,
+)
+
+fun Todo.toShallowHierarchyDto() =
+    TodoHierarchyDto(id = this.id!!, name = this.name, priority = this.priority, status = this.status)
+
 fun TodoHierarchyDto.toDto() = TodoDto(
     id = this.id,
     name = this.name,
+    priority = this.priority,
     status = this.status,
     parentId = this.parents.takeIf { it.isNotEmpty() }?.last()?.id
 )
 
 // TODO get rid of
-fun TodoShallowView.toDto() = TodoDto(
+fun TodoLightView.toDto() = TodoDto(
     id = this.getId() ?: -100,
     name = this.getName(),
     status = this.getStatus(),
-    parentId = this.getParentId()
+    priority = this.getPriority(),
+    parentId = this.getParentId(),
 )
 
-fun TodoShallowView.toShallowHierarchyDto() = TodoHierarchyDto(
+fun TodoLightView.toShallowHierarchyDto() = TodoHierarchyDto(
     id = this.getId() ?: -100,
     name = this.getName(),
     status = this.getStatus(),
+    priority = this.getPriority(),
 )
 
 fun Todo.toDto() = TodoDto(
     id = this.id!!,
     name = this.name,
+    priority = this.priority,
     status = this.status,
     parentId = this.parent?.id
+)
+
+fun CreateTodoDto.toEntity() = Todo(
+    id = null,
+    name = this.name,
+    status = this.status,
+    parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
+        Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
+    }
+)
+
+fun TodoDto.toEntity() = Todo(
+    id = null,
+    name = this.name,
+    status = this.status,
+    parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
+        Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
+    }
 )
 
 fun TodoHistory.toDto() = TodoHistoryDto(
@@ -95,11 +121,15 @@ fun extractBranches(todoHierarchyDtos: List<TodoHierarchyDto>): List<TodoBranchD
                 currentLeaves.add(hierarchyDto.toDto())
             }
         }
+        // sort by priorities
+        val sortedLeaves = currentLeaves.apply {
+            sortByDescending { it.priority }
+        }
         if (currentLeaves.isNotEmpty()) {
             // add result leaves with current 'depth'
             val newTodoBranchDto = TodoBranchDto(
                 parents = parentDepth.toList(),
-                leaves = currentLeaves
+                leaves = sortedLeaves
             )
             result.add(newTodoBranchDto)
         }
@@ -117,18 +147,18 @@ fun extractBranches(todoHierarchyDtos: List<TodoHierarchyDto>): List<TodoBranchD
     return result;
 }
 
-fun buildFullHierarchy(todoShallowViews: List<TodoShallowView>): List<TodoHierarchyDto> {
+fun buildFullHierarchy(todoLightViews: List<TodoLightView>): List<TodoHierarchyDto> {
     val parentIdAndChildrenResultDtos = mutableMapOf<Long, MutableList<TodoHierarchyDto>>()
-    todoShallowViews.forEach {
+    todoLightViews.forEach {
         val resultId = it.getId()!!
         val resultChildrenDtoList = parentIdAndChildrenResultDtos.computeIfAbsent(resultId) { mutableListOf() }
         val resultTodoDto = it.toShallowHierarchyDto().apply {
             children = resultChildrenDtoList
         }
-        val resultParentId = (it.getParentId() ?: TodoService.TODO_ROOT.id)!!
+        val resultParentId = (it.getParentId() ?: TODO_ROOT.id)!!
         val resultParentChildrenDtoList =
             parentIdAndChildrenResultDtos.computeIfAbsent(resultParentId) { mutableListOf() }
         resultParentChildrenDtoList.add(resultTodoDto)
     }
-    return parentIdAndChildrenResultDtos[TodoService.TODO_ROOT.id]!!
+    return parentIdAndChildrenResultDtos[TODO_ROOT.id]!!
 }

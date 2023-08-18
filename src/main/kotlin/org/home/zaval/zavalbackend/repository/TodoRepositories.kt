@@ -17,20 +17,20 @@ interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select t from Todo t where t.parent is null")
     fun getAllTopTodos(): List<Todo>
 
-    @Query("select id, name, status, parent_id as parentId from Todo t where status = :STATUS", nativeQuery = true)
-    fun getAllTodosWithStatus(@Param("STATUS") status: String): List<TodoShallowView>
+    @Query("select id, name, status, priority, interacted_on as interactedOn, parent_id as parentId from Todo t where status = :STATUS", nativeQuery = true)
+    fun getAllTodosWithStatus(@Param("STATUS") status: String): List<TodoLightView>
 
     @Query("select t from Todo t where id in (select id from TodoParentPath tpp where tpp.isLeave = true)")
     fun getAllLeavesTodos(): List<Todo>
 
-    @Query("select id, name, status, parent_id as parentId from Todo t", nativeQuery = true)
-    fun getAllTodos(): List<TodoShallowView>
+    @Query("select id, name, status, priority, interacted_on as interactedOn, parent_id as parentId from Todo t", nativeQuery = true)
+    fun getAllTodos(): List<TodoLightView>
 
-    @Query("select id, name, status, parent_id as parentId from todo t where id in :IDS", nativeQuery = true)
-    fun getAllShallowTodosByIds(@Param("IDS") ids: Iterable<Long>): List<TodoShallowView>
+    @Query("select id, name, status, priority, interacted_on as interactedOn, parent_id as parentId from todo t where id in :IDS", nativeQuery = true)
+    fun getAllShallowTodosByIds(@Param("IDS") ids: Iterable<Long>): List<TodoLightView>
 
-    @Query("select id, name, status, parent_id as parentId from todo t where upper(name) like upper(:PATTERN)", nativeQuery = true)
-    fun findAllShallowTodosByNameFragment(@Param("PATTERN") pattern: String): List<TodoShallowView>
+    @Query("select id, name, status, priority, interacted_on as interactedOn, parent_id as parentId from todo t where upper(name) like upper(:PATTERN)", nativeQuery = true)
+    fun findAllShallowTodosByNameFragment(@Param("PATTERN") pattern: String): List<TodoLightView>
 }
 
 @Repository

@@ -2,6 +2,8 @@ package org.home.zaval.zavalbackend.dto
 
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.util.IdentifiedDto
+import org.home.zaval.zavalbackend.util.asStringFormattedWithISO8601withOffset
+import java.time.OffsetDateTime
 
 data class MoveTodoDto(
     val todoId: Long,
@@ -11,6 +13,7 @@ data class MoveTodoDto(
 class TodoDto(
     id: Long,
     val name: String,
+    val priority: Int = 0,
     val status: TodoStatus,
     val parentId: Long? = null,
 ) : IdentifiedDto(id)
@@ -24,11 +27,13 @@ data class CreateTodoDto(
 data class UpdateTodoDto(
     val name: String,
     val status: TodoStatus,
+    val priority: Int,
 )
 
 class TodoHierarchyDto(
     id: Long,
     val name: String,
+    val priority: Int = 0,
     val status: TodoStatus,
     var parents: List<TodoHierarchyDto> = listOf(),
     var children: List<TodoHierarchyDto>? = listOf()
