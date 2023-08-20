@@ -49,6 +49,11 @@ class TodoController(
         return ResponseEntity.ok(todoService.getBranchesWithStatus(status))
     }
 
+    @GetMapping("prioritized-list", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getPrioritizedListOfTodosWithStatus(@RequestParam("status") status: TodoStatus): ResponseEntity<TodosListDto> {
+        return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))
+    }
+
     @GetMapping(value = ["/hierarchy", "/hierarchy/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getTodoHierarchy(@PathVariable("id", required = false) todoId: String?): ResponseEntity<TodoHierarchyDto?> {
         return ResponseEntity.ok(todoService.getTodoHierarchy(todoId?.toLong()))

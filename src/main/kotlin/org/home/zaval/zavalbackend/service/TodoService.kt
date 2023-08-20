@@ -98,6 +98,21 @@ class TodoService(
             .map { it.toDto() }
     }
 
+    fun getPrioritizedListOfTodosWithStatus(status: TodoStatus): TodosListDto {
+        val todoParentPaths = todoParentPathRepository.getAllTodoParentPathsWithTodoStatus(status)
+        if (todoParentPaths.isEmpty()) {
+            return TodosListDto(todos = emptyList(), parentBranchesMap = emptyMap())
+        }
+        val neededTodoIds = mutableSetOf<Long>()
+        todoParentPaths.forEach { path ->
+            neededTodoIds.add(path.id!!)
+            path.segments.forEach { neededTodoIds.add(it.parentId) }
+        }
+        val todos = todoRepository.getAllShallowTodosByIds(neededTodoIds)
+        val rootHierarchyDtos = buildFullHierarchy(todos)
+        return extractPrioritizedTodosList(rootHierarchyDtos)
+    }
+
     fun getBranchesWithStatus(status: TodoStatus): List<TodoBranchDto> {
         val todoParentPaths = todoParentPathRepository.getAllTodoParentPathsWithTodoStatus(status)
         if (todoParentPaths.isEmpty()) {

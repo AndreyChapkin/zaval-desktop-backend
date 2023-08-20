@@ -45,3 +45,13 @@ class TodoBranchDto(
     var parents: List<TodoDto>,
     var leaves: List<TodoDto>,
 )
+
+class TodoAndParentBranchIdDto(
+    var todo: TodoDto,
+    var parentBranchId: Long? = null,
+)
+
+class TodosListDto(
+    var todos: List<TodoAndParentBranchIdDto>,
+    var parentBranchesMap: Map<Long, List<TodoDto>>,
+)
