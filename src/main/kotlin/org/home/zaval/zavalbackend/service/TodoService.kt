@@ -132,44 +132,82 @@ class TodoService(
 
     @Transactional
     fun moveTodo(moveTodoDto: MoveTodoDto) {
+        if (moveTodoDto.todoId == moveTodoDto.parentId) {
+            return
+        }
         val movingTodo = loadTodo(moveTodoDto.todoId)
-        val finalParentTodo = loadTodo(moveTodoDto.parentId)
+        val finalParentTodo = if (moveTodoDto.parentId != null) loadTodo(moveTodoDto.parentId) else TODO_ROOT
         if (movingTodo != null && finalParentTodo != null) {
-            movingTodo.parent = finalParentTodo
-            todoRepository.save(movingTodo)
-            // update todoBranches
-            val movingTodoParentPath = todoParentPathRepository.findById(movingTodo.id!!).get()
-            val finalParentTodoParentPath = todoParentPathRepository.findById(finalParentTodo.id!!).get()
-            // build new parent branch path for moving task
-            movingTodoParentPath.apply {
-                if (segments.isNotEmpty()) {
-                    val oldSegmentsIds = segments.map { it.id!! }
-                    // NOTE: orphanRemoval delete each item with separate query
-                    todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
-                    segments.clear()
+            if (finalParentTodo.id == TODO_ROOT.id) {
+                movingTodo.parent = null
+                todoRepository.save(movingTodo)
+                // update todoBranches
+                val movingTodoParentPath = todoParentPathRepository.findById(movingTodo.id!!).get()
+                // build new parent branch path for moving task
+                movingTodoParentPath.apply {
+                    if (segments.isNotEmpty()) {
+                        val oldSegmentsIds = segments.map { it.id!! }
+                        // NOTE: orphanRemoval delete each item with separate query
+                        todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                        segments.clear()
+                    }
                 }
-                appendSegments(finalParentTodoParentPath.segments)
-                appendIdToSegments(finalParentTodo.id!!)
-            }
-            finalParentTodoParentPath.isLeave = false
-            // build new parent branch paths for all children
-            val childrenTodoParentPaths = todoParentPathRepository.findAllLevelChildren(movingTodo.id!!)
-            childrenTodoParentPaths.forEach { todoParentPath ->
-                val parentWithChildrenIds = parentWithChildrenIdsInPath(todoParentPath, movingTodo.id!!)
-                if (todoParentPath.segments.isNotEmpty()) {
-                    val oldSegmentsIds = todoParentPath.segments.map { it.id!! }
-                    // NOTE: orphanRemoval delete each item with separate query
-                    todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
-                    todoParentPath.segments.clear()
+                // build new parent branch paths for all children
+                val childrenTodoParentPaths = todoParentPathRepository.findAllLevelChildren(movingTodo.id!!)
+                childrenTodoParentPaths.forEach { childTodoParentPath ->
+                    val parentWithChildrenIds = parentWithChildrenIdsInPath(childTodoParentPath, movingTodo.id!!)
+                    if (childTodoParentPath.segments.isNotEmpty()) {
+                        val oldSegmentsIds = childTodoParentPath.segments.map { it.id!! }
+                        // NOTE: orphanRemoval delete each item with separate query
+                        todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                        childTodoParentPath.segments.clear()
+                    }
+                    childTodoParentPath.appendIdsToParentPath(parentWithChildrenIds)
                 }
-                todoParentPath.appendSegments(movingTodoParentPath.segments)
-                todoParentPath.appendIdsToParentPath(parentWithChildrenIds)
+                todoParentPathRepository.saveAll(
+                    mutableListOf(movingTodoParentPath)
+                        .apply { addAll(childrenTodoParentPaths) }
+                )
+            } else {
+                val finalParentTodoParentPath = todoParentPathRepository.findById(finalParentTodo.id!!).get()
+                if (finalParentTodoParentPath.segments.any { it.parentId == movingTodo.id }) {
+                    return
+                }
+                movingTodo.parent = finalParentTodo
+                todoRepository.save(movingTodo)
+                // update todoBranches
+                val movingTodoParentPath = todoParentPathRepository.findById(movingTodo.id!!).get()
+                // build new parent branch path for moving task
+                movingTodoParentPath.apply {
+                    if (segments.isNotEmpty()) {
+                        val oldSegmentsIds = segments.map { it.id!! }
+                        // NOTE: orphanRemoval delete each item with separate query
+                        todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                        segments.clear()
+                    }
+                    appendSegments(finalParentTodoParentPath.segments)
+                    appendIdToSegments(finalParentTodo.id!!)
+                }
+                finalParentTodoParentPath.isLeave = false
+                // build new parent branch paths for all children
+                val childrenTodoParentPaths = todoParentPathRepository.findAllLevelChildren(movingTodo.id!!)
+                childrenTodoParentPaths.forEach { todoParentPath ->
+                    val parentWithChildrenIds = parentWithChildrenIdsInPath(todoParentPath, movingTodo.id!!)
+                    if (todoParentPath.segments.isNotEmpty()) {
+                        val oldSegmentsIds = todoParentPath.segments.map { it.id!! }
+                        // NOTE: orphanRemoval delete each item with separate query
+                        todoParentPathRepository.removeAllSegmentsByIds(oldSegmentsIds)
+                        todoParentPath.segments.clear()
+                    }
+                    todoParentPath.appendSegments(movingTodoParentPath.segments)
+                    todoParentPath.appendIdsToParentPath(parentWithChildrenIds)
+                }
+                todoParentPathRepository.saveAll(
+                    mutableListOf(movingTodoParentPath)
+                        .apply { add(finalParentTodoParentPath) }
+                        .apply { addAll(childrenTodoParentPaths) }
+                )
             }
-            todoParentPathRepository.saveAll(
-                mutableListOf(movingTodoParentPath)
-                    .apply { add(finalParentTodoParentPath) }
-                    .apply { addAll(childrenTodoParentPaths) }
-            )
         }
     }
 
