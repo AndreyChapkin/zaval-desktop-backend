@@ -44,11 +44,6 @@ class TodoController(
         return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(nameFragment))
     }
 
-    @GetMapping("status-branches", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllTodoWithStatusBranches(@RequestParam("status") status: TodoStatus): ResponseEntity<List<TodoBranchDto>> {
-        return ResponseEntity.ok(todoService.getBranchesWithStatus(status))
-    }
-
     @GetMapping("prioritized-list", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getPrioritizedListOfTodosWithStatus(@RequestParam("status") status: TodoStatus): ResponseEntity<TodosListDto> {
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))

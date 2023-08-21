@@ -41,11 +41,6 @@ class TodoHierarchyDto(
 
 class TodoHistoryDto(val todoId: Long, val records: List<String>)
 
-class TodoBranchDto(
-    var parents: List<TodoDto>,
-    var leaves: List<TodoDto>,
-)
-
 class TodoAndParentBranchIdDto(
     var todo: TodoDto,
     var parentBranchId: Long? = null,
