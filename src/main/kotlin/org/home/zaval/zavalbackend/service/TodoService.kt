@@ -21,13 +21,13 @@ class TodoService(
 ) {
 
     @Transactional
-    fun createTodo(todoDto: CreateTodoDto): TodoDto {
+    fun createTodo(todoDto: CreateTodoDto): LightTodoDto {
         val newTodo = todoDto.toEntity()
         val newTodoParentPath = TodoParentPath(id = null, segments = mutableListOf(), isLeave = true)
         val parentTodoParentPath = todoDto.parentId?.let {
             todoParentPathRepository.findById(it).orElse(null)
         }
-        val savedTodo = todoRepository.save(newTodo).toDto()
+        val savedTodo = todoRepository.save(newTodo).toLightDto()
         newTodoParentPath.apply {
             id = savedTodo.id
             if (parentTodoParentPath != null) {
@@ -45,12 +45,12 @@ class TodoService(
         return savedTodo
     }
 
-    fun getTodo(todoId: Long?): TodoDto? {
-        return loadTodo(todoId)?.toDto()
+    fun getLightTodo(todoId: Long?): LightTodoDto? {
+        return loadTodo(todoId)?.toLightDto()
     }
 
     // TODO downgrade status of parent task to all child tasks statuses
-    fun updateTodo(todoId: Long, todoDto: UpdateTodoDto): TodoDto? {
+    fun updateTodo(todoId: Long, todoDto: UpdateTodoDto): LightTodoDto? {
         val updatingTodo = loadTodo(todoId)
         if (updatingTodo != null) {
             updatingTodo.name = todoDto.name
@@ -62,7 +62,7 @@ class TodoService(
             todoRepository.saveAll(mutableListOf(updatingTodo).apply {
                 addAll(updatedParentTodos)
             })
-            return updatingTodo.toDto()
+            return updatingTodo.toLightDto()
         }
         return null
     }
@@ -82,20 +82,38 @@ class TodoService(
     /**
      * @return root <- ... parent <- todoElement -> children[]
      */
-    fun getTodoHierarchy(todoId: Long?): TodoHierarchyDto? {
-        val todo: Todo? = if (todoId == null) TODO_ROOT else todoRepository.findById(todoId).orElse(null)
-        return buildTodoHierarchy(todo)
+    fun getDetailedTodo(todoId: Long?): DetailedTodoDto? {
+        val todo: Todo = todoId?.let {
+            todoRepository.findById(todoId).orElse(null)
+        } ?: TODO_ROOT
+        if (todo.id == TODO_ROOT.id) {
+            val childrenTodos = todoRepository.getAllTopTodos()
+            return todo.toDetailedDto(
+                parents = emptyList(),
+                childrenTodos.map { it.toLightDto() }
+            )
+        }
+        val parentTodos = todoRepository.getAllParentsOf(todo.id!!)
+        val orderedSegments = todoParentPathRepository.getOrderedParentPathSegments(todo.id!!)
+        val orderedParentTodos = orderedSegments.map { segment ->
+            parentTodos.find { it.id == segment.parentId }!!
+        }
+        val childrenTodos = todoRepository.getAllChildrenOf(todo.id!!)
+        return todo.toDetailedDto(
+            orderedParentTodos.map { it.toLightDto() },
+            childrenTodos.map { it.toLightDto() }
+        )
     }
 
-    fun getAllTodos(status: TodoStatus?): List<TodoDto> {
+    fun getAllTodos(status: TodoStatus?): List<LightTodoDto> {
         return status
-            ?.let { todoRepository.getAllTodosWithStatus(it.name.uppercase()).map { it.toDto() } }
-            ?: todoRepository.getAllTodos().map { it.toDto() }
+            ?.let { todoRepository.getAllTodosWithStatus(it.name.uppercase()).map { it.toLightDto() } }
+            ?: todoRepository.getAllTodos().map { it.toLightDto() }
     }
 
-    fun findAllShallowTodosByNameFragment(nameFragment: String): List<TodoDto> {
+    fun findAllShallowTodosByNameFragment(nameFragment: String): List<LightTodoDto> {
         return todoRepository.findAllShallowTodosByNameFragment("%$nameFragment%")
-            .map { it.toDto() }
+            .map { it.toLightDto() }
     }
 
     fun getPrioritizedListOfTodosWithStatus(status: TodoStatus): TodosListDto {
@@ -109,8 +127,7 @@ class TodoService(
             path.segments.forEach { neededTodoIds.add(it.parentId) }
         }
         val todos = todoRepository.getAllShallowTodosByIds(neededTodoIds)
-        val rootHierarchyDtos = buildFullHierarchy(todos)
-        return extractPrioritizedTodosList(rootHierarchyDtos)
+        return extractPrioritizedTodosList(todos)
     }
 
     @Transactional
@@ -158,7 +175,7 @@ class TodoService(
 
     fun getTodoHistory(todoId: Long?): TodoHistoryDto? {
         return if (todoId != null) {
-            todoHistoryRepository.findById(todoId).map { it.toDto() }.orElse(null)
+            todoHistoryRepository.findById(todoId).map { it.toLightDto() }.orElse(null)
         } else null
     }
 
@@ -169,7 +186,7 @@ class TodoService(
             if (updatingTodoHistory != null) {
                 updatingTodoHistory.records = mergeHistoryRecordsToPersist(todoHistoryDto.records)
                 todoHistoryRepository.save(updatingTodoHistory)
-                return updatingTodoHistory.toDto()
+                return updatingTodoHistory.toLightDto()
             } else {
                 // try to create
                 val owningTodoExists = todoRepository.existsById(todoId)
@@ -179,7 +196,7 @@ class TodoService(
                         records = mergeHistoryRecordsToPersist(todoHistoryDto.records),
                     )
                     todoHistoryRepository.save(newTodoHistory)
-                    return newTodoHistory.toDto()
+                    return newTodoHistory.toLightDto()
                 }
             }
         } else {
@@ -205,29 +222,6 @@ class TodoService(
         }
         return updatedParents
     }
-
-//    private fun extractIdsFromParentPath(parentPath: String?): List<Long> = parentPath
-//        ?.takeIf { it.isNotEmpty() }
-//        ?.let { notEmptyPath ->
-//            notEmptyPath.split(PARENT_PATH_IDS_SEPARATOR).filter { it.isNotEmpty() }.map { it.toLong() }
-//        }
-//        ?: emptyList()
-
-//    private fun appendIdsToParentPath(parentPath: String?, ids: List<Long>): String =
-//        if (ids.isEmpty()) (parentPath ?: "")
-//        else (
-//            parentPath
-//                ?.takeIf { it.isNotEmpty() }
-//                ?.let { it + ids.joinToString(separator = PARENT_PATH_IDS_SEPARATOR) }
-//                ?: (PARENT_PATH_IDS_SEPARATOR + ids.joinToString(separator = PARENT_PATH_IDS_SEPARATOR))
-//            ) + PARENT_PATH_IDS_SEPARATOR
-
-//    private fun appendIdToParentPath(parentPath: String?, id: Long): String = (
-//        parentPath
-//            ?.takeIf { it.isNotEmpty() }
-//            ?.let { it + id }
-//            ?: (PARENT_PATH_IDS_SEPARATOR + id.toString())
-//        ) + PARENT_PATH_IDS_SEPARATOR
 
     private fun TodoParentPath.appendSegments(segments: List<TodoParentPathSegment>) = segments.forEach {
         this.segments.add(
@@ -257,15 +251,6 @@ class TodoService(
         )
     )
 
-//    private fun parentAndChildrenIdsInPath(parentPath: String, parentId: Long): List<Long> {
-//        val allIds = extractIdsFromParentPath(parentPath)
-//        val parentIndex = allIds.indexOf(parentId)
-//        if (parentIndex in 0..allIds.lastIndex) {
-//            return allIds.subList(parentIndex, allIds.size)
-//        }
-//        return emptyList()
-//    }
-
     private fun parentWithChildrenIdsInPath(parentPath: TodoParentPath, parentId: Long): List<Long> {
         val allIds = parentPath.segments.map { it.parentId }
         val parentIndex = allIds.indexOf(parentId)
@@ -273,41 +258,5 @@ class TodoService(
             return allIds.subList(parentIndex, allIds.size)
         }
         return emptyList()
-    }
-
-    private fun buildTodoHierarchy(todo: Todo?): TodoHierarchyDto? {
-        if (todo == null) {
-            return null
-        }
-        // initialize main node
-        val result = todo.toShallowHierarchyDto()
-        if (todo.id != TODO_ROOT.id) {
-            // initialize parents chain
-//            val parentsPathSegments = todoParentPathRepository.getParentPathSegments(todo.id!!)
-            // must be found
-            val parentsPath = todoParentPathRepository.findById(todo.id!!).get()
-            val orderedParentIds = parentsPath.segments.map { it.parentId }
-            val parentTodos = todoRepository.findAllById(orderedParentIds)
-            val orderedParentsHierarchiesList = orderedParentIds
-                .mapNotNull { id -> parentTodos.find { id == it.id } }
-                .map { it.toShallowHierarchyDto() }
-            result.parents = orderedParentsHierarchiesList
-        }
-        // initialize children
-        result.children = (
-            if (todo.id == TODO_ROOT.id) todoRepository.getAllTopTodos()
-            else todoRepository.getAllChildrenOf(result.id)
-            ).map {
-                it.toShallowHierarchyDto()
-            }
-        return result
-    }
-
-    private fun buildTodoHierarchy(todo: Todo, orderedParentTodos: Iterable<Todo>): TodoHierarchyDto {
-        val result = todo.toShallowHierarchyDto()
-        val orderedParentsHierarchiesList = orderedParentTodos
-            .map { it.toShallowHierarchyDto() }
-        result.parents = orderedParentsHierarchiesList
-        return result
     }
 }

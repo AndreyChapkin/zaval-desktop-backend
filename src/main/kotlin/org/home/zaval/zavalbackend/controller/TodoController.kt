@@ -14,17 +14,17 @@ class TodoController(
     val todoService: TodoService
 ) {
     @PostMapping(consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun createTodo(@RequestBody createTodoDto: CreateTodoDto): ResponseEntity<TodoDto> {
+    fun createTodo(@RequestBody createTodoDto: CreateTodoDto): ResponseEntity<LightTodoDto> {
         return ResponseEntity.ok(todoService.createTodo(createTodoDto))
     }
 
     @GetMapping("/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTodo(@PathVariable("id") todoId: String): ResponseEntity<TodoDto?> {
-        return ResponseEntity.ok(todoService.getTodo(todoId.toLong()))
+    fun getLightTodo(@PathVariable("id") todoId: String): ResponseEntity<LightTodoDto?> {
+        return ResponseEntity.ok(todoService.getLightTodo(todoId.toLong()))
     }
 
     @PatchMapping("/{id}", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun updateTodo(@PathVariable("id") todoId: String, @RequestBody todo: UpdateTodoDto): ResponseEntity<TodoDto> {
+    fun updateTodo(@PathVariable("id") todoId: String, @RequestBody todo: UpdateTodoDto): ResponseEntity<LightTodoDto> {
         return ResponseEntity.ok(todoService.updateTodo(todoId.toLong(), todo))
     }
 
@@ -35,12 +35,12 @@ class TodoController(
     }
 
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllTodos(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<TodoDto>> {
+    fun getAllTodos(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<LightTodoDto>> {
         return ResponseEntity.ok(todoService.getAllTodos(status))
     }
 
     @GetMapping("with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<TodoDto>> {
+    fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<LightTodoDto>> {
         return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(nameFragment))
     }
 
@@ -49,9 +49,9 @@ class TodoController(
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))
     }
 
-    @GetMapping(value = ["/hierarchy", "/hierarchy/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTodoHierarchy(@PathVariable("id", required = false) todoId: String?): ResponseEntity<TodoHierarchyDto?> {
-        return ResponseEntity.ok(todoService.getTodoHierarchy(todoId?.toLong()))
+    @GetMapping(value = ["/detailed", "/detailed/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getDetailedTodo(@PathVariable("id", required = false) todoId: String?): ResponseEntity<DetailedTodoDto?> {
+        return ResponseEntity.ok(todoService.getDetailedTodo(todoId?.toLong()))
     }
 
     @PatchMapping("/move", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])

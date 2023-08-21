@@ -2,21 +2,11 @@ package org.home.zaval.zavalbackend.dto
 
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.util.IdentifiedDto
-import org.home.zaval.zavalbackend.util.asStringFormattedWithISO8601withOffset
-import java.time.OffsetDateTime
 
 data class MoveTodoDto(
     val todoId: Long,
     val parentId: Long?,
 )
-
-class TodoDto(
-    id: Long,
-    val name: String,
-    val priority: Int = 0,
-    val status: TodoStatus,
-    val parentId: Long? = null,
-) : IdentifiedDto(id)
 
 data class CreateTodoDto(
     val name: String,
@@ -30,23 +20,38 @@ data class UpdateTodoDto(
     val priority: Int,
 )
 
-class TodoHierarchyDto(
+class LightTodoDto(
     id: Long,
     val name: String,
     val priority: Int = 0,
     val status: TodoStatus,
-    var parents: List<TodoHierarchyDto> = listOf(),
-    var children: List<TodoHierarchyDto>? = listOf()
+    val parentId: Long? = null,
 ) : IdentifiedDto(id)
+
+class DetailedTodoDto(
+    id: Long,
+    val name: String,
+    val description: String,
+    val priority: Int = 0,
+    val status: TodoStatus,
+    var parents: List<LightTodoDto> = listOf(),
+    var children: List<LightTodoDto>? = listOf()
+) : IdentifiedDto(id)
+
+class TodoHierarchyDto(
+    val id: Long,
+    parent: TodoHierarchyDto,
+    children: List<LightTodoDto>?
+)
 
 class TodoHistoryDto(val todoId: Long, val records: List<String>)
 
 class TodoAndParentBranchIdDto(
-    var todo: TodoDto,
+    var todo: LightTodoDto,
     var parentBranchId: Long? = null,
 )
 
 class TodosListDto(
     var todos: List<TodoAndParentBranchIdDto>,
-    var parentBranchesMap: Map<Long, List<TodoDto>>,
+    var parentBranchesMap: Map<Long, List<LightTodoDto>>,
 )

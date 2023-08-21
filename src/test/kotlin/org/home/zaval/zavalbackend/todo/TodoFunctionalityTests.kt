@@ -2,7 +2,7 @@ package org.home.zaval.zavalbackend.todo
 
 import org.home.zaval.zavalbackend.dto.CreateTodoDto
 import org.home.zaval.zavalbackend.dto.MoveTodoDto
-import org.home.zaval.zavalbackend.dto.TodoDto
+import org.home.zaval.zavalbackend.dto.LightTodoDto
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoParentPathRepository
@@ -42,7 +42,7 @@ class TodoFunctionalityTests {
         this.todoParentPathRepository.deleteAll()
         this.todoHistoryRepository.deleteAll()
         val createTodoDtos = createInitialTestTodos()
-        val createdTodos = mutableListOf<TodoDto>()
+        val createdTodos = mutableListOf<LightTodoDto>()
         val firstTodo = todoService.createTodo(createTodoDtos[0]).also { createdTodos.add(it) }
         val secondTodo = todoService.createTodo(
             createTodoDtos[1].copy(parentId = firstTodo.id)
@@ -72,7 +72,7 @@ class TodoFunctionalityTests {
         val expectedParentIdsChain =
             listOf("Fourth", "Fifth", "First", "Second").mapNotNull { initTodosNameAndIdMap[it] }
         val actualParentIdsChain = this.todoService
-            .getTodoHierarchy(checkChildTodoId)!!
+            .getDetailedTodo(checkChildTodoId)!!
             .parents.map { it.id }
         // assert
         Assertions.assertEquals(expectedParentIdsChain, actualParentIdsChain)
@@ -103,7 +103,7 @@ class TodoFunctionalityTests {
             )
         )
         // fetch new todo_instance hierarchy
-        val createdTodoHierarchyDto = this.todoService.getTodoHierarchy(createdTodoDto.id)!!
+        val createdTodoHierarchyDto = this.todoService.getDetailedTodo(createdTodoDto.id)!!
         // assert
         // parents path is full
         val expectedParentIdsChain =

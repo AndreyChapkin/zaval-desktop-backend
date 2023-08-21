@@ -15,19 +15,8 @@ val TODO_ROOT: Todo = Todo(
     status = TodoStatus.BACKLOG,
 )
 
-fun Todo.toShallowHierarchyDto() =
-    TodoHierarchyDto(id = this.id!!, name = this.name, priority = this.priority, status = this.status)
-
-fun TodoHierarchyDto.toDto() = TodoDto(
-    id = this.id,
-    name = this.name,
-    priority = this.priority,
-    status = this.status,
-    parentId = this.parents.takeIf { it.isNotEmpty() }?.last()?.id
-)
-
 // TODO get rid of
-fun TodoLightView.toDto() = TodoDto(
+fun TodoLightView.toLightDto() = LightTodoDto(
     id = this.getId() ?: -100,
     name = this.getName(),
     status = this.getStatus(),
@@ -35,19 +24,22 @@ fun TodoLightView.toDto() = TodoDto(
     parentId = this.getParentId(),
 )
 
-fun TodoLightView.toShallowHierarchyDto() = TodoHierarchyDto(
-    id = this.getId() ?: -100,
-    name = this.getName(),
-    status = this.getStatus(),
-    priority = this.getPriority(),
-)
-
-fun Todo.toDto() = TodoDto(
+fun Todo.toLightDto() = LightTodoDto(
     id = this.id!!,
     name = this.name,
     priority = this.priority,
     status = this.status,
     parentId = this.parent?.id
+)
+
+fun Todo.toDetailedDto(parents: List<LightTodoDto>, children: List<LightTodoDto>) = DetailedTodoDto(
+    id = this.id!!,
+    name = this.name,
+    description = this.description,
+    priority = this.priority,
+    status = this.status,
+    parents = parents,
+    children = children
 )
 
 fun CreateTodoDto.toEntity() = Todo(
@@ -59,7 +51,7 @@ fun CreateTodoDto.toEntity() = Todo(
     }
 )
 
-fun TodoDto.toEntity() = Todo(
+fun LightTodoDto.toEntity() = Todo(
     id = null,
     name = this.name,
     status = this.status,
@@ -68,7 +60,7 @@ fun TodoDto.toEntity() = Todo(
     }
 )
 
-fun TodoHistory.toDto() = TodoHistoryDto(
+fun TodoHistory.toLightDto() = TodoHistoryDto(
     todoId = this.id!!,
     records = extractTodoRecords(this.records)
 )
@@ -77,100 +69,51 @@ fun extractTodoRecords(records: String) = records.split(TODO_HISTORY_DELIMITER)
 
 fun mergeHistoryRecordsToPersist(records: List<String>) = records.joinToString(TODO_HISTORY_DELIMITER)
 
-fun extractPrioritizedTodosList(todoHierarchyDtos: List<TodoHierarchyDto>): TodosListDto {
-    if (todoHierarchyDtos.isEmpty()) {
-        return TodosListDto(todos = emptyList(), parentBranchesMap = emptyMap());
-    }
-    val DELIMITER_VALUE = TodoHierarchyDto(
-        id = Long.MIN_VALUE,
-        name = "",
-        status = TodoStatus.BACKLOG,
-    )
-    var idSequence = 0L
-    val getId: () -> Long = {
-        idSequence++
-    }
-    val resultParentBranchesMap: MutableMap<Long, List<TodoDto>> = mutableMapOf()
-    val resultTodosList: MutableList<TodoAndParentBranchIdDto> = mutableListOf()
-    val parentDepth: LinkedList<TodoDto> = LinkedList()
-    val parentsToVisitQueue: Deque<TodoHierarchyDto> = LinkedList()
-    for (hierarchyDto in todoHierarchyDtos) {
-        if (hierarchyDto.children?.isNotEmpty() == true) {
-            parentsToVisitQueue.addLast(hierarchyDto)
-        } else {
-            resultTodosList.add(
-                TodoAndParentBranchIdDto(
-                    todo = hierarchyDto.toDto()
-                )
-            )
-        }
-    }
-    while (parentsToVisitQueue.isNotEmpty()) {
-        // take and remove the first parent from the queue to visit it
-        val curParent = parentsToVisitQueue.pollFirst()!!
-        if (curParent.id == DELIMITER_VALUE.id) {
-            // finish considering current depth level, rise one step upper from the 'depth'
-            parentDepth.removeLast()
-            continue
-        }
-        // dive into the parent and track the 'depth'
-        parentDepth.add(curParent.toDto())
-        val newParentsToVisit: MutableList<TodoHierarchyDto> = mutableListOf()
-        val currentLeaves: MutableList<TodoDto> = mutableListOf()
-        for (currentChild in curParent.children!!) {
-            if (currentChild.children?.isNotEmpty() == true) {
-                // if child is parent too, schedule it for visiting before previous level parents
-                newParentsToVisit.add(currentChild)
-            } else {
-                // if child is not parent put to the children array for current depth
-                currentLeaves.add(currentChild.toDto())
-            }
-        }
-        if (currentLeaves.isNotEmpty()) {
-            val currentParentBranchId = getId()
-            currentLeaves.forEach {
-                resultTodosList.add(
-                    TodoAndParentBranchIdDto(
-                        todo = it,
-                        parentBranchId = currentParentBranchId
-                    )
-                )
-            }
-            resultParentBranchesMap[currentParentBranchId] = parentDepth.toList()
-        }
-        if (newParentsToVisit.isNotEmpty()) {
-            // schedule visiting new parents firstly and preserve the 'depth'
-            parentsToVisitQueue.addFirst(DELIMITER_VALUE)
-            newParentsToVisit.forEach {
-                parentsToVisitQueue.addFirst(it)
-            }
-        } else {
-            // no new parents, rise one step upper from the 'depth'
-            parentDepth.removeLast()
-        }
-    }
-    // sort by priorities
-    val resultPrioritizedTodosList = resultTodosList.apply {
-        sortByDescending { it.todo.priority }
-    }
-    return TodosListDto(
-        todos = resultPrioritizedTodosList,
-        parentBranchesMap = resultParentBranchesMap
-    )
-}
-
-fun buildFullHierarchy(todoLightViews: List<TodoLightView>): List<TodoHierarchyDto> {
-    val parentIdAndChildrenResultDtos = mutableMapOf<Long, MutableList<TodoHierarchyDto>>()
+fun extractPrioritizedTodosList(todoLightViews: List<TodoLightView>): TodosListDto {
+    val allIdsAndTodos = mutableMapOf<Long, TodoLightView>()
+    val leaveIdsAndTodos = mutableMapOf<Long, TodoLightView>()
+    val parentIdsSet = mutableSetOf<Long>()
     todoLightViews.forEach {
-        val resultId = it.getId()!!
-        val resultChildrenDtoList = parentIdAndChildrenResultDtos.computeIfAbsent(resultId) { mutableListOf() }
-        val resultTodoDto = it.toShallowHierarchyDto().apply {
-            children = resultChildrenDtoList
+        val parentId = it.getParentId()
+        allIdsAndTodos[it.getId()!!] = it
+        if (parentId != null) {
+            parentIdsSet.add(parentId)
         }
-        val resultParentId = (it.getParentId() ?: TODO_ROOT.id)!!
-        val resultParentChildrenDtoList =
-            parentIdAndChildrenResultDtos.computeIfAbsent(resultParentId) { mutableListOf() }
-        resultParentChildrenDtoList.add(resultTodoDto)
+        if (!parentIdsSet.contains(it.getId()!!)) {
+            leaveIdsAndTodos[it.getId()!!] = it
+        }
+        leaveIdsAndTodos.remove(parentId)
     }
-    return parentIdAndChildrenResultDtos[TODO_ROOT.id]!!
+    var idSequence = 0L
+    val resultParentBranchesMap: MutableMap<Long, List<LightTodoDto>> = mutableMapOf()
+    val resultTodosList: MutableList<TodoAndParentBranchIdDto> = mutableListOf()
+    val startParentIdAndParentsListIdMap: MutableMap<Long, Long> = mutableMapOf()
+    leaveIdsAndTodos.values.forEach { value ->
+        var parentsListId = startParentIdAndParentsListIdMap[value.getParentId()]
+        if (parentsListId == null) {
+            val parentsList = mutableListOf<LightTodoDto>()
+            var curParent = allIdsAndTodos[value.getParentId()]
+            while (curParent != null) {
+                parentsList.add(curParent.toLightDto())
+                curParent = allIdsAndTodos[curParent.getParentId()]
+            }
+            if (parentsList.isNotEmpty()) {
+                parentsListId = idSequence++
+                resultParentBranchesMap[parentsListId] = parentsList.reversed()
+                startParentIdAndParentsListIdMap[value.getParentId()!!] = parentsListId
+            }
+        }
+        resultTodosList.add(
+            TodoAndParentBranchIdDto(
+                todo = value.toLightDto(),
+                parentBranchId = parentsListId
+            )
+        )
+    }
+    val sortedResultTodosList = resultTodosList.toMutableList().apply {
+        sortByDescending {
+            it.todo.priority
+        }
+    }
+    return TodosListDto(todos = sortedResultTodosList, parentBranchesMap = resultParentBranchesMap)
 }

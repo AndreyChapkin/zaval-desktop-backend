@@ -14,6 +14,9 @@ interface TodoRepository : CrudRepository<Todo, Long> {
     @Query("select t from Todo t where t.parent.id = :ID")
     fun getAllChildrenOf(@Param("ID") todoId: Long): List<Todo>
 
+    @Query("select t from Todo t where id in (select parentId from TodoParentPathSegment tpps where tpps.parentPath.id = :ID)")
+    fun getAllParentsOf(@Param("ID") todoId: Long): List<Todo>
+
     @Query("select t from Todo t where t.parent is null")
     fun getAllTopTodos(): List<Todo>
 
@@ -36,11 +39,8 @@ interface TodoRepository : CrudRepository<Todo, Long> {
 @Repository
 interface TodoParentPathRepository : CrudRepository<TodoParentPath, Long> {
 
-//    @Query("select parentPath from TodoParentPath tb where tb.id = :ID")
-//    fun getParentsPath(@Param("ID") todoId: Long): String
-
-    @Query("select tpps from TodoParentPathSegment tpps where tpps.parentPath.id = :ID")
-    fun getParentPathSegments(@Param("ID") todoId: Long): List<TodoParentPathSegment>
+    @Query("select tpps from TodoParentPathSegment tpps where tpps.parentPath.id = :ID order by tpps.orderIndex")
+    fun getOrderedParentPathSegments(@Param("ID") todoId: Long): List<TodoParentPathSegment>
 
     @Query("select tpp from TodoParentPath tpp left join fetch tpp.segments where tpp.id in (select t.id from Todo t where t.status = :STATUS)")
     fun getAllTodoParentPathsWithTodoStatus(@Param("STATUS") status: TodoStatus): List<TodoParentPath>

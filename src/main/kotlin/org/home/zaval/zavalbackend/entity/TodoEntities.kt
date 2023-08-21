@@ -23,6 +23,8 @@ class Todo(
     var id: Long?,
     @Column(length = 1000)
     var name: String,
+    @Column(length = 10000)
+    var description: String = "",
     @Enumerated(EnumType.STRING)
     var status: TodoStatus,
     var priority: Int = 0,
