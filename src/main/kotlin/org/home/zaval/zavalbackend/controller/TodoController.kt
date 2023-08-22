@@ -24,8 +24,8 @@ class TodoController(
     }
 
     @PatchMapping("/{id}", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun updateTodo(@PathVariable("id") todoId: String, @RequestBody todo: UpdateTodoDto): ResponseEntity<LightTodoDto> {
-        return ResponseEntity.ok(todoService.updateTodo(todoId.toLong(), todo))
+    fun updateTodo(@PathVariable("id") todoId: String, @RequestBody updateTodoDto: UpdateTodoDto): ResponseEntity<LightTodoDto> {
+        return ResponseEntity.ok(todoService.updateTodo(todoId.toLong(), updateTodoDto))
     }
 
     @DeleteMapping("/{id}")

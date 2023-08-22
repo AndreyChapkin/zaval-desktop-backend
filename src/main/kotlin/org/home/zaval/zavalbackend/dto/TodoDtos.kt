@@ -14,7 +14,12 @@ data class CreateTodoDto(
     val parentId: Long? = null,
 )
 
-data class UpdateTodoDto(
+class UpdateTodoDto(
+    val general: UpdateTodoGeneralDto?,
+    val description: String?
+)
+
+class UpdateTodoGeneralDto(
     val name: String,
     val status: TodoStatus,
     val priority: Int,

@@ -50,12 +50,18 @@ class TodoService(
     }
 
     // TODO downgrade status of parent task to all child tasks statuses
-    fun updateTodo(todoId: Long, todoDto: UpdateTodoDto): LightTodoDto? {
+    fun updateTodo(todoId: Long, updateTodoDto: UpdateTodoDto): LightTodoDto? {
         val updatingTodo = loadTodo(todoId)
         if (updatingTodo != null) {
-            updatingTodo.name = todoDto.name
-            updatingTodo.status = todoDto.status
-            updatingTodo.priority = todoDto.priority
+            // update general information
+            if (updateTodoDto.general != null) {
+                updatingTodo.name = updateTodoDto.general.name
+                updatingTodo.status = updateTodoDto.general.status
+                updatingTodo.priority = updateTodoDto.general.priority
+            }
+            if (updateTodoDto.description != null) {
+                updatingTodo.description = updateTodoDto.description
+            }
             // also upgrade statuses of the parents
             // TODO optimize
             val updatedParentTodos = upgradeAllParentStatuses(updatingTodo)
