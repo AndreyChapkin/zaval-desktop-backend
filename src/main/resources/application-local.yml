@@ -1,0 +1,20 @@
+spring:
+    datasource:
+      url: jdbc:postgresql://localhost:5432/zaval-desktop
+      username: zaval-desktop
+      password: zaval-desktop
+      driver-class-name: org.postgresql.Driver
+    properties:
+      hibernate:
+        default_schema: zaval_desktop
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+logging:
+  level:
+    org:
+      hibernate:
+        SQL: DEBUG
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
