@@ -1,6 +1,7 @@
 package org.home.zaval.zavalbackend.entity
 
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
+import org.home.zaval.zavalbackend.listener.TodoListener
 import org.home.zaval.zavalbackend.util.asUtc
 import java.sql.Timestamp
 import java.time.OffsetDateTime
@@ -16,10 +17,9 @@ interface TodoLightView {
 }
 
 @Entity
+@EntityListeners(TodoListener::class)
 class Todo(
     @Id
-    @SequenceGenerator(name = "todo_generator", sequenceName = "hibernate_sequence", allocationSize = 1)
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "todo_generator")
     var id: Long?,
     @Column(length = 1000)
     var name: String,

@@ -1,4 +1,4 @@
-package org.home.zaval.zavalbackend.util
+package org.home.zaval.zavalbackend.dto
 
 open class IdentifiedDto(val id: Long) {
     override fun equals(other: Any?): Boolean {

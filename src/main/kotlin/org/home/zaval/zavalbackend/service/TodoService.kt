@@ -7,6 +7,7 @@ import org.home.zaval.zavalbackend.repository.TodoParentPathRepository
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.util.*
+import org.home.zaval.zavalbackend.util.singleton.todo.TodoStore
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
@@ -22,7 +23,9 @@ class TodoService(
 
     @Transactional
     fun createTodo(todoDto: CreateTodoDto): LightTodoDto {
-        val newTodo = todoDto.toEntity()
+        val newTodo = todoDto.toEntity().apply {
+            id = TodoStore.getId()
+        }
         val newTodoParentPath = TodoParentPath(id = null, segments = mutableListOf(), isLeave = true)
         val parentTodoParentPath = todoDto.parentId?.let {
             todoParentPathRepository.findById(it).orElse(null)
@@ -42,6 +45,7 @@ class TodoService(
             }
         }
         todoParentPathRepository.saveAll(savingPaths)
+        TodoStore.savePersistedValues()
         return savedTodo
     }
 
