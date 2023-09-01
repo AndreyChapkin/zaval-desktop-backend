@@ -1,5 +1,6 @@
 package org.home.zaval.zavalbackend.util.singleton
 
+import org.home.zaval.zavalbackend.store.ApplicationConfigStore
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths

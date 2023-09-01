@@ -7,7 +7,7 @@ import org.home.zaval.zavalbackend.repository.TodoParentPathRepository
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.util.*
-import org.home.zaval.zavalbackend.util.singleton.todo.TodoStore
+import org.home.zaval.zavalbackend.store.TodoStore
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service

@@ -5,6 +5,7 @@ import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.service.TodoService
+import org.home.zaval.zavalbackend.store.TodoStore
 import org.springframework.boot.CommandLineRunner
 import org.springframework.stereotype.Component
 
@@ -18,7 +19,9 @@ class ApplicationLoader(
         loadTodoPersistedValuesAndOptimizationFiles()
         val persistedTodos = loadTodos()
         if (persistedTodos.isNotEmpty()) {
+            TodoStore.active = false
             placeTodosInMainMemory(persistedTodos, todoRepository)
+            TodoStore.active = true
         } else {
             val createdIds = mutableListOf<Long>()
             val maxNumber = 10

@@ -1,6 +1,7 @@
 package org.home.zaval.zavalbackend.dto
 
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
+import java.time.OffsetDateTime
 
 data class MoveTodoDto(
     val todoId: Long,
@@ -29,6 +30,17 @@ class LightTodoDto(
     val name: String,
     val priority: Int = 0,
     val status: TodoStatus,
+    val parentId: Long? = null,
+) : IdentifiedDto(id)
+
+class FullTodoDto(
+    id: Long,
+    val name: String,
+    val description: String,
+    val priority: Int = 0,
+    val status: TodoStatus,
+    val createdOn: String,
+    val interactedOn: String,
     val parentId: Long? = null,
 ) : IdentifiedDto(id)
 

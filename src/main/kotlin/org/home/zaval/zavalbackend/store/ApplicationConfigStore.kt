@@ -1,6 +1,7 @@
-package org.home.zaval.zavalbackend.util.singleton
+package org.home.zaval.zavalbackend.store
 
 import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
+import org.home.zaval.zavalbackend.util.singleton.StorageFileWorker
 
 object ApplicationConfigStore {
     const val CONFIG_FILE_PATH = "./config.json"

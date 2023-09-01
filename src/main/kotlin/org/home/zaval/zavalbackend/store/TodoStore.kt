@@ -1,5 +1,6 @@
-package org.home.zaval.zavalbackend.util.singleton.todo
+package org.home.zaval.zavalbackend.store
 
+import org.home.zaval.zavalbackend.dto.FullTodoDto
 import org.home.zaval.zavalbackend.dto.LightTodoDto
 import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
 import org.home.zaval.zavalbackend.util.filesInTheDir
@@ -24,13 +25,18 @@ object TodoStore {
     lateinit var todoIndices: MutableMap<Long, String>
     lateinit var persistedValues: TodoPersistedValues
 
+    var active = true
+
     fun getId(): Long {
         return persistedValues.idSequence++
     }
 
-    fun saveOrUpdateTodo(todo: LightTodoDto) {
+    fun saveOrUpdateTodo(todo: FullTodoDto) {
+        if (!active) {
+            return
+        }
         val existingFilename = todoIndices[todo.id]
-        var outdatedTodo: LightTodoDto? = null
+        var outdatedTodo: FullTodoDto? = null
         if (existingFilename != null) {
             // TodoEntity already was persisted. Update in file
             val savedTodos = readTodos(existingFilename)
@@ -76,11 +82,14 @@ object TodoStore {
         saveIndices()
     }
 
-    fun removeTodo(todo: LightTodoDto) {
+    fun removeTodo(todo: FullTodoDto) {
+        if (!active) {
+            return
+        }
         val filename = todoIndices[todo.id]
         if (filename != null) {
             val savedTodos = readTodos(filename)
-            var outdatedTodo: LightTodoDto? = null
+            var outdatedTodo: FullTodoDto? = null
             val updatedTodos = savedTodos.filter {
                 if (it.id == todo.id) {
                     outdatedTodo = it
@@ -107,7 +116,7 @@ object TodoStore {
     }
 
     fun loadIndices(): MutableMap<Long, String>? {
-        return StorageFileWorker.readObjectFromFile(TODO_INDICES_FILENAME.path)
+        return StorageFileWorker.readObjectFromFile(resolve(TODO_INDICES_FILENAME))
     }
 
     fun savePersistedValues() {
@@ -117,7 +126,7 @@ object TodoStore {
         )
     }
 
-    fun readTodos(filename: String): List<LightTodoDto> {
+    fun readTodos(filename: String): List<FullTodoDto> {
         val todosStr = StorageFileWorker.readFile(resolve(filename))
         if (todosStr != null) {
             return extractTodos(todosStr)
@@ -125,15 +134,15 @@ object TodoStore {
         return emptyList()
     }
 
-    fun readAllTodos(): List<LightTodoDto> {
-        val result = mutableListOf<LightTodoDto>()
+    fun readAllTodos(): List<FullTodoDto> {
+        val result = mutableListOf<FullTodoDto>()
         filesInTheDir(resolve(ACTUAL_SUBDIR)).forEach {
             result.addAll(readTodos(it.fileName.toString()))
         }
         return result
     }
 
-    private fun saveOutdatedTodo(todo: LightTodoDto) {
+    private fun saveOutdatedTodo(todo: FullTodoDto) {
         val alreadyHasFile = StorageFileWorker.fileExists(resolve(OUTDATED_TODOS_FILENAME))
         if (alreadyHasFile) {
             appendTodo(todo, OUTDATED_TODOS_FILENAME)
@@ -146,12 +155,12 @@ object TodoStore {
         StorageFileWorker.writeObjectToFile(todoIndices, resolve(TODO_INDICES_FILENAME))
     }
 
-    private fun writeTodos(todos: List<LightTodoDto>, filename: String) {
+    private fun writeTodos(todos: List<FullTodoDto>, filename: String) {
         val todosStr = mergeTodos(todos)
         StorageFileWorker.writeToFile(todosStr, resolve(filename))
     }
 
-    private fun appendTodo(todo: LightTodoDto, filename: String) {
+    private fun appendTodo(todo: FullTodoDto, filename: String) {
         val appendPortion = "$TODOS_SEPARATOR${JsonHelper.serializeObject(todo)}"
         StorageFileWorker.appendToFile(appendPortion, resolve(filename))
     }
@@ -175,13 +184,13 @@ object TodoStore {
         return "todos-$number.txt"
     }
 
-    private fun extractTodos(str: String): List<LightTodoDto> {
+    private fun extractTodos(str: String): List<FullTodoDto> {
         return str.split(TODOS_SEPARATOR).map {
-            JsonHelper.deserializeObject<LightTodoDto>(it)
+            JsonHelper.deserializeObject<FullTodoDto>(it)
         }.toList()
     }
 
-    private fun mergeTodos(todos: List<LightTodoDto>): String {
+    private fun mergeTodos(todos: List<FullTodoDto>): String {
         return todos.map { JsonHelper.serializeObject(it) }
             .joinToString(TODOS_SEPARATOR)
     }

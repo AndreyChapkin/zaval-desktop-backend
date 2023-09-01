@@ -1,14 +1,13 @@
 package org.home.zaval.zavalbackend.initialization
 
-import org.home.zaval.zavalbackend.dto.CreateTodoDto
+import org.home.zaval.zavalbackend.dto.FullTodoDto
 import org.home.zaval.zavalbackend.dto.LightTodoDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
-import org.home.zaval.zavalbackend.service.TodoService
 import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
 import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
-import org.home.zaval.zavalbackend.util.singleton.ApplicationConfigStore
+import org.home.zaval.zavalbackend.store.ApplicationConfigStore
 import org.home.zaval.zavalbackend.util.singleton.JsonHelper
-import org.home.zaval.zavalbackend.util.singleton.todo.TodoStore
+import org.home.zaval.zavalbackend.store.TodoStore
 import org.home.zaval.zavalbackend.util.toEntity
 import java.util.LinkedList
 import java.util.Queue
@@ -54,7 +53,7 @@ fun loadTodoPersistedValuesAndOptimizationFiles() {
     }
 }
 
-fun loadTodos(): List<LightTodoDto> {
+fun loadTodos(): List<FullTodoDto> {
     println(":::::::: Saved todos loading ::::::::")
     println("Start loading...")
     val persistedTodos = TodoStore.readAllTodos()
@@ -66,10 +65,10 @@ fun loadTodos(): List<LightTodoDto> {
     return persistedTodos
 }
 
-fun placeTodosInMainMemory(todos: List<LightTodoDto>, todoRepository: TodoRepository) {
+fun placeTodosInMainMemory(todos: List<FullTodoDto>, todoRepository: TodoRepository) {
     val ROOT_ID_PLACEHOLDER = Long.MIN_VALUE
     val parentChildrenIds: MutableMap<Long, MutableList<Long>> = mutableMapOf()
-    val idAndDtos: MutableMap<Long, LightTodoDto> = mutableMapOf()
+    val idAndDtos: MutableMap<Long, FullTodoDto> = mutableMapOf()
     todos.forEach {
         idAndDtos[it.id] = it
         val resultParentId = it.parentId ?: ROOT_ID_PLACEHOLDER

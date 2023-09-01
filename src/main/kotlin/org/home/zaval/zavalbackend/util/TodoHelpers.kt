@@ -42,6 +42,17 @@ fun Todo.toDetailedDto(parents: List<LightTodoDto>, children: List<LightTodoDto>
     children = children
 )
 
+fun Todo.toFullDto() = FullTodoDto(
+    id = this.id!!,
+    name = this.name,
+    description = this.description,
+    priority = this.priority,
+    parentId = this.parent?.takeIf { it.id != TODO_ROOT.id }?.id,
+    status = this.status,
+    createdOn = this.createdOn.asStringFormattedWithISO8601withOffset(),
+    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset(),
+)
+
 fun CreateTodoDto.toEntity() = Todo(
     id = null,
     name = this.name,
@@ -58,6 +69,18 @@ fun LightTodoDto.toEntity() = Todo(
     parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
         Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
     }
+)
+
+fun FullTodoDto.toEntity() = Todo(
+    id = null,
+    name = this.name,
+    description = this.description,
+    status = this.status,
+    parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
+        Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
+    },
+    createdOn = this.createdOn.asOffsetDateTimeFromISO8601WithOffset(),
+    interactedOn = this.interactedOn.asOffsetDateTimeFromISO8601WithOffset(),
 )
 
 fun TodoHistory.toLightDto() = TodoHistoryDto(
