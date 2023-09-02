@@ -16,7 +16,7 @@ class ApplicationLoader(
 ) : CommandLineRunner {
     override fun run(vararg args: String?) {
         loadConfig()
-        loadTodoPersistedValuesAndOptimizationFiles()
+        loadTodoTechnicalFiles()
         val persistedTodos = loadTodos()
         if (persistedTodos.isNotEmpty()) {
             TodoStore.active = false

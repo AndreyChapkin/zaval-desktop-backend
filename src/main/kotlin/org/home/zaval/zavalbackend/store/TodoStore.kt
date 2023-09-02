@@ -1,7 +1,7 @@
 package org.home.zaval.zavalbackend.store
 
 import org.home.zaval.zavalbackend.dto.FullTodoDto
-import org.home.zaval.zavalbackend.dto.LightTodoDto
+import org.home.zaval.zavalbackend.util.dto.FilesInfoCache
 import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
 import org.home.zaval.zavalbackend.util.filesInTheDir
 import org.home.zaval.zavalbackend.util.path
@@ -15,6 +15,7 @@ object TodoStore {
     const val OUTDATED_SUBDIR = "outdated"
 
     const val TODO_INDICES_FILENAME = "todo-indices.json"
+    const val FILES_INFO_CACHE = "files-info-cache.json"
     const val OUTDATED_TODOS_FILENAME = "outdated-todos.txt"
 
     const val PERSISTED_VALUES_FILENAME = "persisted-values.json"
@@ -22,6 +23,7 @@ object TodoStore {
     const val MAX_TODOS_NUMBER_AT_FILE = 4
     const val TODOS_SEPARATOR = "\n::::::::::::::::\n"
 
+    lateinit var filesInfoCache: FilesInfoCache
     lateinit var todoIndices: MutableMap<Long, String>
     lateinit var persistedValues: TodoPersistedValues
 
@@ -54,31 +56,25 @@ object TodoStore {
         }
         // TodoEntity was not persisted
         // Try to append to incomplete file
-        val incompleteFileFilename = todoIndices.values.let { filenames ->
-            val counters: MutableMap<String, Int> = mutableMapOf()
-            val incompleteFileFilenames: MutableSet<String> = mutableSetOf()
-            filenames.forEach { filename ->
-                val count = (counters[filename] ?: 0) + 1
-                counters[filename] = count
-                if (count < MAX_TODOS_NUMBER_AT_FILE) {
-                    incompleteFileFilenames.add(filename)
-                } else {
-                    incompleteFileFilenames.remove(filename)
-                }
-            }
-            // use the first one
-            if (incompleteFileFilenames.size > 0) incompleteFileFilenames.first() else null
-        }
+        val incompleteFileFilename = filesInfoCache.incompleteFilenames.keys.takeIf { it.size > 0 }?.first()
         if (incompleteFileFilename != null) {
             // if there is incomplete file
             appendTodo(todo, incompleteFileFilename)
+            val newCount = filesInfoCache.incompleteFilenames[incompleteFileFilename]!! + 1
+            if (newCount < MAX_TODOS_NUMBER_AT_FILE) {
+                filesInfoCache.incompleteFilenames[incompleteFileFilename] = newCount
+            } else {
+                filesInfoCache.incompleteFilenames.remove(incompleteFileFilename)
+            }
             todoIndices[todo.id] = incompleteFileFilename
-            return
+        } else {
+            // There is no incomplete file. Add todoEntity to new file
+            val newFilename = newTodoFileName()
+            writeTodos(listOf(todo), newFilename)
+            filesInfoCache.incompleteFilenames[newFilename] = 1
+            todoIndices[todo.id] = newFilename
         }
-        // There is no incomplete file. Add todoEntity to new file
-        val newFilename = newTodoFileName()
-        writeTodos(listOf(todo), newFilename)
-        todoIndices[todo.id] = newFilename
+        saveFilesInfoCache()
         saveIndices()
     }
 
@@ -100,6 +96,16 @@ object TodoStore {
             }
             outdatedTodo?.let { saveOutdatedTodo(it) }
             writeTodos(updatedTodos, filename)
+            // Manage excessive empty files and cache
+            val newCount = filesInfoCache.incompleteFilenames
+                .computeIfAbsent(filename) { MAX_TODOS_NUMBER_AT_FILE } - 1
+            if (newCount < 1) {
+                filesInfoCache.incompleteFilenames.remove(filename)
+                StorageFileWorker.removeFile(resolve(filename))
+            } else {
+                filesInfoCache.incompleteFilenames[filename] = newCount
+            }
+            saveFilesInfoCache()
         }
     }
 
@@ -111,12 +117,12 @@ object TodoStore {
         return mutableMapOf()
     }
 
-    fun loadPersistedValues(): TodoPersistedValues? {
-        return StorageFileWorker.readObjectFromFile(resolve(PERSISTED_VALUES_FILENAME))
+    fun createDefaultFilesInfoCache(): FilesInfoCache {
+        return FilesInfoCache(mutableMapOf())
     }
 
-    fun loadIndices(): MutableMap<Long, String>? {
-        return StorageFileWorker.readObjectFromFile(resolve(TODO_INDICES_FILENAME))
+    fun loadPersistedValues(): TodoPersistedValues? {
+        return StorageFileWorker.readObjectFromFile(resolve(PERSISTED_VALUES_FILENAME))
     }
 
     fun savePersistedValues() {
@@ -124,6 +130,22 @@ object TodoStore {
             persistedValues,
             resolve(PERSISTED_VALUES_FILENAME)
         )
+    }
+
+    fun loadFilesInfoCache(): FilesInfoCache? {
+        return StorageFileWorker.readObjectFromFile(resolve(FILES_INFO_CACHE))
+    }
+
+    private fun saveFilesInfoCache() {
+        StorageFileWorker.writeObjectToFile(filesInfoCache, resolve(FILES_INFO_CACHE))
+    }
+
+    fun loadIndices(): MutableMap<Long, String>? {
+        return StorageFileWorker.readObjectFromFile(resolve(TODO_INDICES_FILENAME))
+    }
+
+    private fun saveIndices() {
+        StorageFileWorker.writeObjectToFile(todoIndices, resolve(TODO_INDICES_FILENAME))
     }
 
     fun readTodos(filename: String): List<FullTodoDto> {
@@ -151,10 +173,6 @@ object TodoStore {
         }
     }
 
-    private fun saveIndices() {
-        StorageFileWorker.writeObjectToFile(todoIndices, resolve(TODO_INDICES_FILENAME))
-    }
-
     private fun writeTodos(todos: List<FullTodoDto>, filename: String) {
         val todosStr = mergeTodos(todos)
         StorageFileWorker.writeToFile(todosStr, resolve(filename))
@@ -170,7 +188,7 @@ object TodoStore {
             TODOS_DIR -> TODOS_DIR
             OUTDATED_SUBDIR -> "$TODOS_DIR/$OUTDATED_SUBDIR"
             ACTUAL_SUBDIR -> "$TODOS_DIR/$ACTUAL_SUBDIR"
-            TODO_INDICES_FILENAME, PERSISTED_VALUES_FILENAME -> "$TODOS_DIR/$filename"
+            TODO_INDICES_FILENAME, PERSISTED_VALUES_FILENAME, FILES_INFO_CACHE -> "$TODOS_DIR/$filename"
             OUTDATED_TODOS_FILENAME -> "$TODOS_DIR/$OUTDATED_SUBDIR/$filename"
             else -> "$TODOS_DIR/$ACTUAL_SUBDIR/$filename"
         }

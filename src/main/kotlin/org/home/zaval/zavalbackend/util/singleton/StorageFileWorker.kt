@@ -70,4 +70,9 @@ object StorageFileWorker {
         return Files.readString(filePath)
     }
 
+    fun removeFile(filename: Path) {
+        val filePath = resolveRelative(filename)
+        Files.deleteIfExists(filePath)
+    }
+
 }

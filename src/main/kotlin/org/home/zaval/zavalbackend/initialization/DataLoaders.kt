@@ -1,7 +1,6 @@
 package org.home.zaval.zavalbackend.initialization
 
 import org.home.zaval.zavalbackend.dto.FullTodoDto
-import org.home.zaval.zavalbackend.dto.LightTodoDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
 import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
@@ -27,7 +26,7 @@ fun loadConfig() {
     }
 }
 
-fun loadTodoPersistedValuesAndOptimizationFiles() {
+fun loadTodoTechnicalFiles() {
     println(":::::::: Todo persisted values loading ::::::::")
     println("Start loading values from ${TodoStore.resolve(TodoStore.PERSISTED_VALUES_FILENAME)}...")
     val persistedValues: TodoPersistedValues? = TodoStore.loadPersistedValues()
@@ -50,6 +49,17 @@ fun loadTodoPersistedValuesAndOptimizationFiles() {
     } else {
         TodoStore.todoIndices = todoIndices
         println("+++ Todo indices are loaded successfully!")
+    }
+    println("Start files info cache from ${TodoStore.resolve(TodoStore.FILES_INFO_CACHE)}...")
+    val filesInfoCache = TodoStore.loadFilesInfoCache()
+    if (filesInfoCache == null) {
+        println("--- No files info cache. Use default.")
+        val defaultFilesInfoCache = TodoStore.createDefaultFilesInfoCache()
+        TodoStore.filesInfoCache = defaultFilesInfoCache
+        println(JsonHelper.serializeObjectPretty(defaultFilesInfoCache))
+    } else {
+        TodoStore.filesInfoCache = filesInfoCache
+        println("+++ Todo files info cache is loaded successfully!")
     }
 }
 

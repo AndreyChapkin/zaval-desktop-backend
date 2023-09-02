@@ -1,7 +1,5 @@
 package org.home.zaval.zavalbackend
 
-import org.home.zaval.zavalbackend.initialization.loadConfig
-import org.home.zaval.zavalbackend.initialization.loadTodoPersistedValuesAndOptimizationFiles
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
