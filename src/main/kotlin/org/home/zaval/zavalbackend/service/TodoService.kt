@@ -45,7 +45,6 @@ class TodoService(
             }
         }
         todoParentPathRepository.saveAll(savingPaths)
-        TodoStore.savePersistedValues()
         return savedTodo
     }
 

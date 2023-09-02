@@ -1,10 +1,9 @@
 package org.home.zaval.zavalbackend.store
 
 import org.home.zaval.zavalbackend.dto.FullTodoDto
+import org.home.zaval.zavalbackend.util.*
 import org.home.zaval.zavalbackend.util.dto.FilesInfoCache
 import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
-import org.home.zaval.zavalbackend.util.filesInTheDir
-import org.home.zaval.zavalbackend.util.path
 import org.home.zaval.zavalbackend.util.singleton.JsonHelper
 import org.home.zaval.zavalbackend.util.singleton.StorageFileWorker
 import java.nio.file.Path
@@ -23,21 +22,21 @@ object TodoStore {
     const val MAX_TODOS_NUMBER_AT_FILE = 4
     const val TODOS_SEPARATOR = "\n::::::::::::::::\n"
 
-    lateinit var filesInfoCache: FilesInfoCache
-    lateinit var todoIndices: MutableMap<Long, String>
-    lateinit var persistedValues: TodoPersistedValues
+    val filesInfoCache = PersistableObject<FilesInfoCache>(resolve(FILES_INFO_CACHE))
+    val todoIndices = PersistableObject<MutableMap<Long, String>>(resolve(TODO_INDICES_FILENAME))
+    val persistedValues = PersistableObject<TodoPersistedValues>(resolve(PERSISTED_VALUES_FILENAME))
 
     var active = true
 
     fun getId(): Long {
-        return persistedValues.idSequence++
+        return persistedValues.readObj.idSequence++
     }
 
     fun saveOrUpdateTodo(todo: FullTodoDto) {
         if (!active) {
             return
         }
-        val existingFilename = todoIndices[todo.id]
+        val existingFilename = todoIndices.readObj[todo.id]
         var outdatedTodo: FullTodoDto? = null
         if (existingFilename != null) {
             // TodoEntity already was persisted. Update in file
@@ -56,33 +55,33 @@ object TodoStore {
         }
         // TodoEntity was not persisted
         // Try to append to incomplete file
-        val incompleteFileFilename = filesInfoCache.incompleteFilenames.keys.takeIf { it.size > 0 }?.first()
-        if (incompleteFileFilename != null) {
-            // if there is incomplete file
-            appendTodo(todo, incompleteFileFilename)
-            val newCount = filesInfoCache.incompleteFilenames[incompleteFileFilename]!! + 1
-            if (newCount < MAX_TODOS_NUMBER_AT_FILE) {
-                filesInfoCache.incompleteFilenames[incompleteFileFilename] = newCount
+        val incompleteFileFilename = filesInfoCache.readObj.incompleteFilenames.keys.takeIf { it.size > 0 }?.first()
+        ensurePersistenceForAll(todoIndices, filesInfoCache) {
+            if (incompleteFileFilename != null) {
+                // if there is incomplete file
+                appendTodo(todo, incompleteFileFilename)
+                val newCount = filesInfoCache.readObj.incompleteFilenames[incompleteFileFilename]!! + 1
+                if (newCount < MAX_TODOS_NUMBER_AT_FILE) {
+                    filesInfoCache.modObj.incompleteFilenames[incompleteFileFilename] = newCount
+                } else {
+                    filesInfoCache.modObj.incompleteFilenames.remove(incompleteFileFilename)
+                }
+                todoIndices.modObj[todo.id] = incompleteFileFilename
             } else {
-                filesInfoCache.incompleteFilenames.remove(incompleteFileFilename)
+                // There is no incomplete file. Add todoEntity to new file
+                val newFilename = newTodoFileName()
+                writeTodos(listOf(todo), newFilename)
+                filesInfoCache.modObj.incompleteFilenames[newFilename] = 1
+                todoIndices.modObj[todo.id] = newFilename
             }
-            todoIndices[todo.id] = incompleteFileFilename
-        } else {
-            // There is no incomplete file. Add todoEntity to new file
-            val newFilename = newTodoFileName()
-            writeTodos(listOf(todo), newFilename)
-            filesInfoCache.incompleteFilenames[newFilename] = 1
-            todoIndices[todo.id] = newFilename
         }
-        saveFilesInfoCache()
-        saveIndices()
     }
 
     fun removeTodo(todo: FullTodoDto) {
         if (!active) {
             return
         }
-        val filename = todoIndices[todo.id]
+        val filename = todoIndices.readObj[todo.id]
         if (filename != null) {
             val savedTodos = readTodos(filename)
             var outdatedTodo: FullTodoDto? = null
@@ -97,15 +96,16 @@ object TodoStore {
             outdatedTodo?.let { saveOutdatedTodo(it) }
             writeTodos(updatedTodos, filename)
             // Manage excessive empty files and cache
-            val newCount = filesInfoCache.incompleteFilenames
-                .computeIfAbsent(filename) { MAX_TODOS_NUMBER_AT_FILE } - 1
-            if (newCount < 1) {
-                filesInfoCache.incompleteFilenames.remove(filename)
-                StorageFileWorker.removeFile(resolve(filename))
-            } else {
-                filesInfoCache.incompleteFilenames[filename] = newCount
+            ensurePersistence(filesInfoCache) {
+                val newCount = filesInfoCache.modObj.incompleteFilenames
+                    .computeIfAbsent(filename) { MAX_TODOS_NUMBER_AT_FILE } - 1
+                if (newCount < 1) {
+                    filesInfoCache.modObj.incompleteFilenames.remove(filename)
+                    StorageFileWorker.removeFile(resolve(filename))
+                } else {
+                    filesInfoCache.modObj.incompleteFilenames[filename] = newCount
+                }
             }
-            saveFilesInfoCache()
         }
     }
 
@@ -119,33 +119,6 @@ object TodoStore {
 
     fun createDefaultFilesInfoCache(): FilesInfoCache {
         return FilesInfoCache(mutableMapOf())
-    }
-
-    fun loadPersistedValues(): TodoPersistedValues? {
-        return StorageFileWorker.readObjectFromFile(resolve(PERSISTED_VALUES_FILENAME))
-    }
-
-    fun savePersistedValues() {
-        return StorageFileWorker.writeObjectToFile(
-            persistedValues,
-            resolve(PERSISTED_VALUES_FILENAME)
-        )
-    }
-
-    fun loadFilesInfoCache(): FilesInfoCache? {
-        return StorageFileWorker.readObjectFromFile(resolve(FILES_INFO_CACHE))
-    }
-
-    private fun saveFilesInfoCache() {
-        StorageFileWorker.writeObjectToFile(filesInfoCache, resolve(FILES_INFO_CACHE))
-    }
-
-    fun loadIndices(): MutableMap<Long, String>? {
-        return StorageFileWorker.readObjectFromFile(resolve(TODO_INDICES_FILENAME))
-    }
-
-    private fun saveIndices() {
-        StorageFileWorker.writeObjectToFile(todoIndices, resolve(TODO_INDICES_FILENAME))
     }
 
     fun readTodos(filename: String): List<FullTodoDto> {

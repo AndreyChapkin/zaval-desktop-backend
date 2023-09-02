@@ -16,7 +16,6 @@ class TodoListener {
 
     @PostUpdate
     fun afterUpdate(todo: Todo) {
-        println("@@@ Updated Todo id = ${todo.id}, description = ${todo.description}")
         TodoStore.saveOrUpdateTodo(todo.toFullDto())
     }
 

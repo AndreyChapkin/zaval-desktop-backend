@@ -1,12 +1,14 @@
 package org.home.zaval.zavalbackend.initialization
 
 import org.home.zaval.zavalbackend.dto.FullTodoDto
+import org.home.zaval.zavalbackend.exception.NotPersistedObjectException
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
 import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
 import org.home.zaval.zavalbackend.store.ApplicationConfigStore
 import org.home.zaval.zavalbackend.util.singleton.JsonHelper
 import org.home.zaval.zavalbackend.store.TodoStore
+import org.home.zaval.zavalbackend.util.load
 import org.home.zaval.zavalbackend.util.toEntity
 import java.util.LinkedList
 import java.util.Queue
@@ -29,37 +31,36 @@ fun loadConfig() {
 fun loadTodoTechnicalFiles() {
     println(":::::::: Todo persisted values loading ::::::::")
     println("Start loading values from ${TodoStore.resolve(TodoStore.PERSISTED_VALUES_FILENAME)}...")
-    val persistedValues: TodoPersistedValues? = TodoStore.loadPersistedValues()
-    if (persistedValues == null) {
+    try {
+        TodoStore.persistedValues.load()
+        println("+++ Persisted values are loaded successfully!")
+    } catch (e: NotPersistedObjectException) {
         println("--- No persisted values. Use default values.")
         val defaultPersistedValues = TodoStore.createDefaultPersistedValues()
-        TodoStore.persistedValues = defaultPersistedValues
+        TodoStore.persistedValues.onlyAssignObj = defaultPersistedValues
         println(JsonHelper.serializeObjectPretty(defaultPersistedValues))
-    } else {
-        TodoStore.persistedValues = persistedValues
-        println("+++ Persisted values are loaded successfully!")
     }
+
     println("Start loading todo indices from ${TodoStore.resolve(TodoStore.TODO_INDICES_FILENAME)}...")
-    val todoIndices: MutableMap<Long, String>? = TodoStore.loadIndices()
-    if (todoIndices == null) {
+    try {
+        TodoStore.todoIndices.load()
+        println("+++ Todo indices are loaded successfully!")
+    } catch (e: NotPersistedObjectException) {
         println("--- No indices. Use default.")
         val defaultTodoIndices = TodoStore.createDefaultIndices()
-        TodoStore.todoIndices = defaultTodoIndices
+        TodoStore.todoIndices.onlyAssignObj = defaultTodoIndices
         println(JsonHelper.serializeObjectPretty(defaultTodoIndices))
-    } else {
-        TodoStore.todoIndices = todoIndices
-        println("+++ Todo indices are loaded successfully!")
     }
+
     println("Start files info cache from ${TodoStore.resolve(TodoStore.FILES_INFO_CACHE)}...")
-    val filesInfoCache = TodoStore.loadFilesInfoCache()
-    if (filesInfoCache == null) {
+    try {
+        TodoStore.filesInfoCache.load()
+        println("+++ Todo files info cache is loaded successfully!")
+    } catch (e: NotPersistedObjectException) {
         println("--- No files info cache. Use default.")
         val defaultFilesInfoCache = TodoStore.createDefaultFilesInfoCache()
-        TodoStore.filesInfoCache = defaultFilesInfoCache
+        TodoStore.filesInfoCache.onlyAssignObj = defaultFilesInfoCache
         println(JsonHelper.serializeObjectPretty(defaultFilesInfoCache))
-    } else {
-        TodoStore.filesInfoCache = filesInfoCache
-        println("+++ Todo files info cache is loaded successfully!")
     }
 }
 
