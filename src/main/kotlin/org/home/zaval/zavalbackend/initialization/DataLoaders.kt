@@ -1,8 +1,9 @@
 package org.home.zaval.zavalbackend.initialization
 
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
-import org.home.zaval.zavalbackend.exception.NotPersistedObjectException
+import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
+import org.home.zaval.zavalbackend.service.TodoService
 import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
 import org.home.zaval.zavalbackend.store.ApplicationConfigStore
 import org.home.zaval.zavalbackend.util.singleton.JsonHelper
@@ -53,6 +54,16 @@ fun loadTodoTechnicalFiles() {
     }
 }
 
+fun loadTodoHistoryTechnicalFiles() {
+    println(":::::::: Todo history technical files loading ::::::::")
+    println("Start todo loading history technical files...")
+    val results = TodoStore.todosHistoryContent.loadTechnicalFiles()
+    println("Todo history content technical files:")
+    results.forEach {
+        println(it)
+    }
+}
+
 fun loadTodos(): List<FullTodoDto> {
     println(":::::::: Saved todos loading ::::::::")
     println("Start loading...")
@@ -63,6 +74,18 @@ fun loadTodos(): List<FullTodoDto> {
         println("--- No saved todos.")
     }
     return persistedTodos
+}
+
+fun loadTodoHistories(): List<TodoHistoryDto> {
+    println(":::::::: Saved todo histories loading ::::::::")
+    println("Start loading...")
+    val persistedHistoryDtos = TodoStore.readAllHistories()
+    if (persistedHistoryDtos.isNotEmpty()) {
+        println("+++ Todo histories loaded successfully!")
+    } else {
+        println("--- No saved todo histories.")
+    }
+    return persistedHistoryDtos
 }
 
 fun placeTodosInMainMemory(todos: List<FullTodoDto>, todoRepository: TodoRepository) {
@@ -85,5 +108,11 @@ fun placeTodosInMainMemory(todos: List<FullTodoDto>, todoRepository: TodoReposit
         parentChildrenIds[curId]?.let {
             queueToSave.addAll(it)
         }
+    }
+}
+
+fun placeTodosHistoriesInMemory(historyDtos: List<TodoHistoryDto>, todoService: TodoService) {
+    historyDtos.forEach {
+        todoService.updateTodoHistory(it.todoId, it)
     }
 }

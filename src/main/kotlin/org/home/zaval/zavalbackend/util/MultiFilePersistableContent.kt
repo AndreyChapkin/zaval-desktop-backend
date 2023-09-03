@@ -100,12 +100,15 @@ class MultiFilePersistableObjects<T : Any>(
                 }
                 entityId != curId
             }
-            writeEntities(updatedEntities, filename)
+            val noMoreEntitiesInFile = updatedEntities.isEmpty()
+            if (!noMoreEntitiesInFile) {
+                writeEntities(updatedEntities, filename)
+            }
             // Manage excessive empty files and cache
             ensurePersistenceForAll(filesInfoCache, indices) {
                 val newCount = filesInfoCache.modObj.incompleteFilenames
                     .computeIfAbsent(filename) { maxEntitiesInFile } - 1
-                if (newCount < 1) {
+                if (noMoreEntitiesInFile || newCount < 1) {
                     filesInfoCache.modObj.incompleteFilenames.remove(filename)
                     StorageFileWorker.removeFile(resolve(filename))
                 } else {

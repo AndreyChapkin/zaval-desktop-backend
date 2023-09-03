@@ -1,6 +1,7 @@
 package org.home.zaval.zavalbackend.entity
 
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
+import org.home.zaval.zavalbackend.listener.TodoHistoryListener
 import org.home.zaval.zavalbackend.listener.TodoListener
 import org.home.zaval.zavalbackend.util.asUtc
 import java.sql.Timestamp
@@ -35,35 +36,11 @@ class Todo(
     var parent: Todo? = null,
 )
 
-//@Entity
-//class TodoParentPath(
-//    /** Is filled manually with id of an according todo_instance */
-//    @Id
-//    var id: Long?,
-//    @OneToMany(mappedBy = "parentPath", fetch = FetchType.EAGER, cascade = [CascadeType.ALL])
-//    @OrderBy("ORDER_INDEX")
-//    var segments: MutableList<TodoParentPathSegment>,
-//    var isLeave: Boolean,
-//)
-//
-//@Entity
-//class TodoParentPathSegment(
-//    @Id
-//    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "todo_generator")
-//    @SequenceGenerator(name = "todo_generator", sequenceName = "hibernate_sequence", allocationSize = 1)
-//    var id: Long? = null,
-//    @ManyToOne
-//    @JoinColumn(name = "PARENT_PATH_ID", nullable = false)
-//    var parentPath: TodoParentPath?,
-//    var parentId: Long,
-//    var orderIndex: Int,
-//)
-
 @Entity
+@EntityListeners(TodoHistoryListener::class)
 class TodoHistory(
     @Id
     var id: Long? = null,
-    @Lob
     @Column(length = 10000)
     var records: String,
 )

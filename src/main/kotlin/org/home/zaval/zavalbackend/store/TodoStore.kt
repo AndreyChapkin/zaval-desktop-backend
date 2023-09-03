@@ -1,6 +1,7 @@
 package org.home.zaval.zavalbackend.store
 
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
+import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.exception.UnknownFileException
 import org.home.zaval.zavalbackend.util.*
 import org.home.zaval.zavalbackend.util.dto.AggregationInfoDto
@@ -11,6 +12,7 @@ import java.util.LinkedList
 
 object TodoStore {
     const val TODOS_DIR = "todos"
+    const val HISTORY_SUBDIR = "history"
     const val ACTUAL_SUBDIR = "actual"
     const val OUTDATED_SUBDIR = "outdated"
 
@@ -20,6 +22,11 @@ object TodoStore {
 
     val aggregationInfo = PersistableObject<AggregationInfoDto>(resolve(AGGREGATION_INFO_CACHE))
     val persistedValues = PersistableObject<TodoPersistedValues>(resolve(PERSISTED_VALUES_FILENAME))
+    val todosHistoryContent = MultiFilePersistableObjects(
+        relativeStorageRootDirPath = resolveRelative(HISTORY_SUBDIR),
+        entityClass = TodoHistoryDto::class.java,
+        idExtractor = { it.todoId },
+    )
     val todosContent = MultiFilePersistableObjects(
         relativeStorageRootDirPath = resolveRelative(ACTUAL_SUBDIR),
         entityClass = FullTodoDto::class.java,
@@ -34,7 +41,11 @@ object TodoStore {
     var active = true
 
     fun getId(): Long {
-        return persistedValues.readObj.idSequence++
+        var resultId = Long.MIN_VALUE
+        ensurePersistence(persistedValues) {
+            resultId = persistedValues.modObj.idSequence++
+        }
+        return resultId
     }
 
     fun readAllTodos(): List<FullTodoDto> {
@@ -61,6 +72,24 @@ object TodoStore {
         if (outdatedTodo != null) {
             outdatedTodosContent.saveOrUpdateEntity(outdatedTodo)
         }
+    }
+
+    fun readAllHistories(): List<TodoHistoryDto> {
+        return todosHistoryContent.readAllEntities()
+    }
+
+    fun saveOrUpdateHistory(historyDto: TodoHistoryDto) {
+        if (!active) {
+            return
+        }
+        todosHistoryContent.saveOrUpdateEntity(historyDto)
+    }
+
+    fun removeHistory(historyDto: TodoHistoryDto) {
+        if (!active) {
+            return
+        }
+        todosHistoryContent.removeEntity(historyDto)
     }
 
     fun getAllParentsOf(todoId: Long): List<Long> {
@@ -131,9 +160,10 @@ object TodoStore {
     fun resolveRelative(filename: String): String {
         return when (filename) {
             TODOS_DIR -> TODOS_DIR
-            ACTUAL_SUBDIR -> "$TODOS_DIR/$ACTUAL_SUBDIR"
-            OUTDATED_SUBDIR -> "$TODOS_DIR/$OUTDATED_SUBDIR"
+
+            ACTUAL_SUBDIR, OUTDATED_SUBDIR, HISTORY_SUBDIR,
             AGGREGATION_INFO_CACHE, PERSISTED_VALUES_FILENAME -> "$TODOS_DIR/$filename"
+
             else -> throw UnknownFileException(filename)
         }
     }

@@ -1,8 +1,10 @@
 package org.home.zaval.zavalbackend.listener
 
 import org.home.zaval.zavalbackend.entity.Todo
+import org.home.zaval.zavalbackend.entity.TodoHistory
 import org.home.zaval.zavalbackend.store.TodoStore
 import org.home.zaval.zavalbackend.util.toFullDto
+import org.home.zaval.zavalbackend.util.toLightDto
 import javax.persistence.PostPersist
 import javax.persistence.PostRemove
 import javax.persistence.PostUpdate
@@ -22,5 +24,23 @@ class TodoListener {
     @PostRemove
     fun afterRemove(todo: Todo) {
         TodoStore.removeTodo(todo.toFullDto())
+    }
+}
+
+class TodoHistoryListener {
+
+    @PostPersist
+    fun afterPersist(history: TodoHistory) {
+        TodoStore.saveOrUpdateHistory(history.toLightDto())
+    }
+
+    @PostUpdate
+    fun afterUpdate(history: TodoHistory) {
+        TodoStore.saveOrUpdateHistory(history.toLightDto())
+    }
+
+    @PostRemove
+    fun afterRemove(history: TodoHistory) {
+        TodoStore.removeHistory(history.toLightDto())
     }
 }

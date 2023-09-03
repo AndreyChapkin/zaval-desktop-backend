@@ -17,6 +17,7 @@ class ApplicationLoader(
     override fun run(vararg args: String?) {
         loadConfig()
         loadTodoTechnicalFiles()
+        // Todos
         val persistedTodos = loadTodos()
         if (persistedTodos.isNotEmpty()) {
             TodoStore.active = false
@@ -48,6 +49,14 @@ class ApplicationLoader(
                     )
                 ).also { createdIds.add(it.id) }
             }
+        }
+        // Histories
+        loadTodoHistoryTechnicalFiles()
+        val persistedHistories = loadTodoHistories()
+        if (persistedTodos.isNotEmpty()) {
+            TodoStore.active = false
+            placeTodosHistoriesInMemory(persistedHistories, todoService)
+            TodoStore.active = true
         }
     }
 }
