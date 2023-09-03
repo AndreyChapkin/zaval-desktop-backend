@@ -8,3 +8,5 @@ class AlreadyInPersistenceContextException() :
 
 class NotTrackedPersistableObjectModificationException() :
     RuntimeException("Persistable object modification out of persistence context is not allowed.")
+
+class UnknownFileException(filename: String) : RuntimeException("Unkown file or directory: ${filename}")

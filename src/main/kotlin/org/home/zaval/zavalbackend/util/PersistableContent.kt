@@ -22,9 +22,13 @@ class PersistableObject<T : Any>(
     var inPersistenceContext = false
 }
 
-inline fun <reified T : Any> PersistableObject<T>.load() {
-    this.onlyAssignObj = StorageFileWorker.readObjectFromFile(this.filePath)
-        ?: throw NotPersistedObjectException(this.filePath)
+inline fun <reified T : Any> PersistableObject<T>.load(defaultProvider: () -> T): LoadingInfo {
+    var loadingResult = LoadingResult.LOADED
+    this.onlyAssignObj = StorageFileWorker.readObjectFromFile(this.filePath) ?: run {
+        loadingResult = LoadingResult.DEFAULT
+        defaultProvider()
+    }
+    return LoadingInfo(this.filePath.fileName.toString(), loadingResult)
 }
 
 inline fun ensurePersistence(persistableObj: PersistableObject<*>, changer: () -> Unit) {

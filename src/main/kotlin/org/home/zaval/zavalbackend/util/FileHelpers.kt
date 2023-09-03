@@ -19,5 +19,11 @@ fun filesInTheDir(dirPath: Path): List<Path> {
     return fileNames
 }
 
+enum class LoadingResult {
+    LOADED, DEFAULT
+}
+
+data class LoadingInfo(val filename: String, val result: LoadingResult)
+
 val String.path: Path
     get() = Paths.get(this)

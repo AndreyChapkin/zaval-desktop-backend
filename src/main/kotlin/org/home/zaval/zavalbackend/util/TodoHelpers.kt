@@ -1,11 +1,10 @@
 package org.home.zaval.zavalbackend.util
 
-import org.home.zaval.zavalbackend.dto.*
+import org.home.zaval.zavalbackend.dto.todo.*
 import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.TodoHistory
 import org.home.zaval.zavalbackend.entity.TodoLightView
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
-import java.util.*
 
 const val TODO_HISTORY_DELIMITER = "<;>"
 

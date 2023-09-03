@@ -15,6 +15,10 @@ object JsonHelper {
         return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(obj)
     }
 
+    fun <T> deserializeObject(str: String, objClass: Class<T>): T {
+        return mapper.readValue(str, objClass)
+    }
+
     inline fun <reified T> deserializeObject(str: String): T {
         return mapper.readValue(str, T::class.java)
     }

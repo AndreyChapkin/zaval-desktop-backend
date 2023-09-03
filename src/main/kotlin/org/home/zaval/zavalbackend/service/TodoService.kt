@@ -1,6 +1,6 @@
 package org.home.zaval.zavalbackend.service
 
-import org.home.zaval.zavalbackend.dto.*
+import org.home.zaval.zavalbackend.dto.todo.*
 import org.home.zaval.zavalbackend.entity.*
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoParentPathRepository

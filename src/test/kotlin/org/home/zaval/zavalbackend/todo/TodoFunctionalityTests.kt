@@ -1,8 +1,8 @@
 package org.home.zaval.zavalbackend.todo
 
-import org.home.zaval.zavalbackend.dto.CreateTodoDto
-import org.home.zaval.zavalbackend.dto.MoveTodoDto
-import org.home.zaval.zavalbackend.dto.LightTodoDto
+import org.home.zaval.zavalbackend.dto.todo.CreateTodoDto
+import org.home.zaval.zavalbackend.dto.todo.MoveTodoDto
+import org.home.zaval.zavalbackend.dto.todo.LightTodoDto
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
 import org.home.zaval.zavalbackend.repository.TodoParentPathRepository

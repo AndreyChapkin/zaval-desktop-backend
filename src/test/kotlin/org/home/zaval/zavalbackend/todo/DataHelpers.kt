@@ -1,6 +1,6 @@
 package org.home.zaval.zavalbackend.todo
 
-import org.home.zaval.zavalbackend.dto.CreateTodoDto
+import org.home.zaval.zavalbackend.dto.todo.CreateTodoDto
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 
 fun createInitialTestTodos(): List<CreateTodoDto> {

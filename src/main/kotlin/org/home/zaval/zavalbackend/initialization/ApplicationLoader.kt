@@ -1,6 +1,6 @@
 package org.home.zaval.zavalbackend.initialization
 
-import org.home.zaval.zavalbackend.dto.CreateTodoDto
+import org.home.zaval.zavalbackend.dto.todo.CreateTodoDto
 import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoRepository

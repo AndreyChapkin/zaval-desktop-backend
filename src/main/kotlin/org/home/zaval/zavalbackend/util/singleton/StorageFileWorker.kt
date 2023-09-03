@@ -62,6 +62,14 @@ object StorageFileWorker {
         return JsonHelper.deserializeObject((Files.readString(filePath)))
     }
 
+    fun <T> readObjectFromFile(filename: Path, objClass: Class<T>): T? {
+        val filePath = resolveRelative(filename)
+        if (!Files.exists(filePath)) {
+            return null
+        }
+        return JsonHelper.deserializeObject(Files.readString(filePath), objClass)
+    }
+
     fun readFile(filename: Path): String? {
         val filePath = resolveRelative(filename)
         if (!Files.exists(filePath)) {
