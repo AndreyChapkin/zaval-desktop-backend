@@ -7,6 +7,7 @@ import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
 import org.home.zaval.zavalbackend.store.ApplicationConfigStore
 import org.home.zaval.zavalbackend.util.singleton.JsonHelper
 import org.home.zaval.zavalbackend.store.TodoStore
+import org.home.zaval.zavalbackend.util.dto.AggregationInfoDto
 import org.home.zaval.zavalbackend.util.load
 import org.home.zaval.zavalbackend.util.toEntity
 import java.util.LinkedList
@@ -33,7 +34,11 @@ fun loadTodoTechnicalFiles() {
     val result = TodoStore.persistedValues.load {
         TodoStore.createDefaultPersistedValues()
     }
-    ("Todo persisted values - ${result.result}")
+    println("Start loading aggregation info...")
+    val aggregationInfoResult = TodoStore.aggregationInfo.load {
+        AggregationInfoDto(childToParentIds = mutableMapOf(), parentToChildrenIds = mutableMapOf())
+    }
+    ("Todo aggregation info - ${aggregationInfoResult.result}")
     println("Start loading todo technical files...")
     val results = TodoStore.todosContent.loadTechnicalFiles()
     println("Todo content technical files:")
