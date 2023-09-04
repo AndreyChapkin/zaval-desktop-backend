@@ -153,8 +153,29 @@ class MultiFilePersistableObjects<T : Any>(
     private fun newEntitiesFileName(): String {
         val entitiesDir = resolve(ENTITIES_DIR_NAME)
         val fileNames = filesInTheDir(entitiesDir)
-        val number = fileNames.size
-        return ENTITIES_FILENAME_TEMPLATE.format(number)
+        val usedNumbers: List<Int> = fileNames.map {
+            val name = it.fileName.toString()
+            val lastDashIndex = name.lastIndexOf("-")
+            val lastDotIndex = name.lastIndexOf(".")
+            val number = name.substring(lastDashIndex + 1, lastDotIndex).toInt()
+            number
+        }.sorted()
+        var freeNumber = 0
+        if (usedNumbers.isNotEmpty()) {
+            freeNumber = usedNumbers.last() + 1
+            var i = 0
+            while (i < usedNumbers.lastIndex) {
+                // if there is a gap between numbers - use it
+                val curElem = usedNumbers[i]
+                val nextElem = usedNumbers[i + 1]
+                if (nextElem > curElem + 1) {
+                    freeNumber = curElem + 1
+                    break
+                }
+                i++
+            }
+        }
+        return ENTITIES_FILENAME_TEMPLATE.format(freeNumber)
     }
 
     private fun resolve(filename: String): Path {

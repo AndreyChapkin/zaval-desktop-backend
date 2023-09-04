@@ -154,7 +154,7 @@ object TodoStore {
     }
 
     fun createDefaultPersistedValues(): TodoPersistedValues {
-        return TodoPersistedValues(idSequence = 0L)
+        return TodoPersistedValues(idSequence = 1L)
     }
 
     fun resolveRelative(filename: String): String {
