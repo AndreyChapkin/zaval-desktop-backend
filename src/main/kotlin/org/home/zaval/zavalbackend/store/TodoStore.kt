@@ -71,7 +71,7 @@ object TodoStore {
             return
         }
         val outdatedTodo: FullTodoDto? = todosContent.removeEntity(todo)
-        updateAggregationInfo(todo, true)
+        removeAggregationInfo(todo)
         if (outdatedTodo != null) {
             outdatedTodosContent.saveOrUpdateEntity(outdatedTodo)
         }
@@ -119,7 +119,24 @@ object TodoStore {
         return result
     }
 
-    private fun updateAggregationInfo(todo: FullTodoDto, removed: Boolean = false) {
+    private fun removeAggregationInfo(todo: FullTodoDto) {
+        val todoId = todo.id
+        ensurePersistence(aggregationInfo) {
+            // Try to remove info for entity and all level children
+            val idsToDelete = LinkedList<Long>().apply { add(todoId) }
+            while (idsToDelete.isNotEmpty()) {
+                val curDeleteId = idsToDelete.pollFirst()!!
+                aggregationInfo.modObj.parentToChildrenIds
+                    .remove(curDeleteId)
+                    ?.let {
+                        idsToDelete.addAll(it)
+                    }
+                aggregationInfo.modObj.childToParentIds.remove(curDeleteId)
+            }
+        }
+    }
+
+    private fun updateAggregationInfo(todo: FullTodoDto) {
         val todoId = todo.id
         val prevParentId = aggregationInfo.readObj.childToParentIds[todoId]
         val curParentId = todo.parentId
@@ -138,19 +155,11 @@ object TodoStore {
                 curChildrenIds.add(todoId)
             }
             // Try to remove from previous parent children
-            aggregationInfo.modObj.parentToChildrenIds[prevParentId]
-                ?.removeIf { it == todoId }
-            if (removed) {
-                // Try to remove info for all level children
-                val idsToDelete = LinkedList<Long>().apply { add(todoId) }
-                while (idsToDelete.isNotEmpty()) {
-                    val curDeleteId = idsToDelete.pollFirst()!!
-                    aggregationInfo.modObj.parentToChildrenIds
-                        .remove(curDeleteId)
-                        ?.let {
-                            idsToDelete.addAll(it)
-                        }
-                    aggregationInfo.modObj.childToParentIds.remove(curDeleteId)
+            aggregationInfo.modObj.parentToChildrenIds[prevParentId]?.removeIf { it == todoId }
+            // Clear parent to children info if there is no more children
+            aggregationInfo.readObj.parentToChildrenIds[prevParentId]?.let {
+                if (it.size < 1) {
+                    aggregationInfo.modObj.parentToChildrenIds.remove(prevParentId)
                 }
             }
         }
