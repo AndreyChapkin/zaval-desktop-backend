@@ -1,4 +1,4 @@
-package org.home.zaval.zavalbackend.util.dto
+package org.home.zaval.zavalbackend.dto.persistence
 
 class TodoPersistedValues(
     var idSequence: Long,

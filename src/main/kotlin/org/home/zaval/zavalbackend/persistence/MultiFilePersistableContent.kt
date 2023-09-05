@@ -1,8 +1,7 @@
-package org.home.zaval.zavalbackend.util
+package org.home.zaval.zavalbackend.persistence
 
-import org.home.zaval.zavalbackend.util.dto.FilesInfoCache
-import org.home.zaval.zavalbackend.util.singleton.JsonHelper
-import org.home.zaval.zavalbackend.util.singleton.StorageFileWorker
+import org.home.zaval.zavalbackend.util.*
+import org.home.zaval.zavalbackend.dto.persistence.FilesInfoCache
 import java.nio.file.Path
 
 class MultiFilePersistableObjects<T : Any>(

@@ -16,6 +16,7 @@ class ApplicationLoader(
 ) : CommandLineRunner {
     override fun run(vararg args: String?) {
         loadConfig()
+        reserveCurrentData()
         loadTodoTechnicalFiles()
         // Todos
         val persistedTodos = loadTodos()

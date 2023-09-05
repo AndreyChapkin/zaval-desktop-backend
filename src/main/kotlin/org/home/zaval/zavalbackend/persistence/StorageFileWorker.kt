@@ -1,4 +1,4 @@
-package org.home.zaval.zavalbackend.util.singleton
+package org.home.zaval.zavalbackend.persistence
 
 import org.home.zaval.zavalbackend.store.ApplicationConfigStore
 import java.nio.file.Files

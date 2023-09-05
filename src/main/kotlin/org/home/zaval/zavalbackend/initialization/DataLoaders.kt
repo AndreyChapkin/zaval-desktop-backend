@@ -4,15 +4,20 @@ import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
 import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.service.TodoService
-import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
+import org.home.zaval.zavalbackend.persistence.ApplicationConfig
 import org.home.zaval.zavalbackend.store.ApplicationConfigStore
-import org.home.zaval.zavalbackend.util.singleton.JsonHelper
+import org.home.zaval.zavalbackend.persistence.JsonHelper
 import org.home.zaval.zavalbackend.store.TodoStore
-import org.home.zaval.zavalbackend.util.dto.AggregationInfoDto
-import org.home.zaval.zavalbackend.util.load
+import org.home.zaval.zavalbackend.dto.persistence.AggregationInfoDto
+import org.home.zaval.zavalbackend.persistence.DataArchiver
+import org.home.zaval.zavalbackend.persistence.load
+import org.home.zaval.zavalbackend.util.numberedFilenamesInDir
 import org.home.zaval.zavalbackend.util.toEntity
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.LinkedList
 import java.util.Queue
+import kotlin.io.path.name
 
 fun loadConfig() {
     println(":::::::: Config loading ::::::::")
@@ -27,6 +32,49 @@ fun loadConfig() {
         ApplicationConfigStore.config = config
         println("Config is loaded successfully!")
     }
+}
+
+fun reserveCurrentData() {
+    println(":::::::: Reserving current application data ::::::::")
+    val storageDirPath = Paths.get(ApplicationConfigStore.config.storageDirectory)
+    val dirToSaveArchivePath = Paths.get(ApplicationConfigStore.config.saveArchivesToDirectory)
+    val zipName = storageDirPath.name
+    // If there is archive already - rename it
+    val existingArchivePath = dirToSaveArchivePath.resolve("$zipName.zip")
+    if (Files.exists(existingArchivePath)) {
+        println("There is used archive. Make it older.")
+        val numberedArchiveNamesWithNumbers = numberedFilenamesInDir(dirToSaveArchivePath)
+        val maxNumberedArchivesNumber = ApplicationConfigStore.config.maxArchivesNumber - 1
+        if (numberedArchiveNamesWithNumbers.keys.size >= maxNumberedArchivesNumber) {
+            // delete the oldest archive
+            numberedArchiveNamesWithNumbers.keys.maxOrNull()?.let { oldestArchiveNumber ->
+                val oldestArchivePath = dirToSaveArchivePath.resolve("$zipName-$oldestArchiveNumber.zip")
+                println("Delete the oldest archive: $oldestArchivePath")
+                Files.delete(oldestArchivePath)
+                numberedArchiveNamesWithNumbers.remove(oldestArchiveNumber)
+            }
+        }
+        // rename rest of files
+        println("Rename all other archives to make them older.")
+        numberedArchiveNamesWithNumbers.keys
+            .sortedByDescending { it }
+            .forEach { numberKey ->
+                val prevArchivePath = dirToSaveArchivePath.resolve("$zipName-$numberKey.zip")
+                val newArchivePath = dirToSaveArchivePath.resolve("$zipName-${numberKey + 1}.zip")
+                Files.move(prevArchivePath, newArchivePath)
+            }
+        // add number to unnumbered archive name
+        val newArchivePath = dirToSaveArchivePath.resolve("$zipName-1.zip")
+        Files.move(existingArchivePath, newArchivePath)
+    }
+    println("Start creating reserve archive...")
+    // Create new archive
+    DataArchiver(
+        storageDirAbsolutePath = storageDirPath,
+        dirToSaveZipAbsolutePath = dirToSaveArchivePath,
+        zipName
+    ).createArchive()
+    println("Archive created successfully!")
 }
 
 fun loadTodoTechnicalFiles() {

@@ -1,7 +1,7 @@
 package org.home.zaval.zavalbackend.store
 
-import org.home.zaval.zavalbackend.util.dto.ApplicationConfig
-import org.home.zaval.zavalbackend.util.singleton.StorageFileWorker
+import org.home.zaval.zavalbackend.persistence.ApplicationConfig
+import org.home.zaval.zavalbackend.persistence.StorageFileWorker
 
 object ApplicationConfigStore {
     const val CONFIG_FILE_PATH = "./config.json"
@@ -13,7 +13,8 @@ object ApplicationConfigStore {
     }
 
     fun createDefaultConfig(): ApplicationConfig = ApplicationConfig(
-        storageDirectory = ".",
-        numberOfTodosInFile = 4,
+        storageDirectory = ".\\zaval-data",
+        saveArchivesToDirectory = ".\\zaval-data-archives",
+        maxArchivesNumber = 2,
     )
 }

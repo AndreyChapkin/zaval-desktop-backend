@@ -3,10 +3,13 @@ package org.home.zaval.zavalbackend.store
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
 import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.exception.UnknownFileException
+import org.home.zaval.zavalbackend.persistence.MultiFilePersistableObjects
+import org.home.zaval.zavalbackend.persistence.PersistableObject
 import org.home.zaval.zavalbackend.util.*
-import org.home.zaval.zavalbackend.util.dto.AggregationInfoDto
-import org.home.zaval.zavalbackend.util.dto.TodoPersistedValues
-import org.home.zaval.zavalbackend.util.singleton.StorageFileWorker
+import org.home.zaval.zavalbackend.dto.persistence.AggregationInfoDto
+import org.home.zaval.zavalbackend.dto.persistence.TodoPersistedValues
+import org.home.zaval.zavalbackend.persistence.StorageFileWorker
+import org.home.zaval.zavalbackend.persistence.ensurePersistence
 import java.nio.file.Path
 import java.util.LinkedList
 

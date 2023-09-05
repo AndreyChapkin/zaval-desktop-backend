@@ -1,9 +1,9 @@
-package org.home.zaval.zavalbackend.util
+package org.home.zaval.zavalbackend.persistence
 
 import org.home.zaval.zavalbackend.exception.AlreadyInPersistenceContextException
-import org.home.zaval.zavalbackend.exception.NotPersistedObjectException
 import org.home.zaval.zavalbackend.exception.NotTrackedPersistableObjectModificationException
-import org.home.zaval.zavalbackend.util.singleton.StorageFileWorker
+import org.home.zaval.zavalbackend.util.LoadingInfo
+import org.home.zaval.zavalbackend.util.LoadingResult
 import java.nio.file.Path
 
 class PersistableObject<T : Any>(
