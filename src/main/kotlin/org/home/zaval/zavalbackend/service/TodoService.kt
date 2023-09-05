@@ -113,8 +113,11 @@ class TodoService(
             val curAllParentIds = TodoStore.getAllParentsOf(it.getId()!!)
             neededAllLevelParentTodoIds.addAll(curAllParentIds)
         }
-        val allLevelParentTodos = todoRepository.getAllShallowTodosByIds(neededAllLevelParentTodoIds)
-        val resultTodos = allTodosWithStatus.toMutableList().apply { addAll(allLevelParentTodos) }
+        val resultTodos = allTodosWithStatus.toMutableList()
+        if (neededAllLevelParentTodoIds.isNotEmpty()) {
+            val allLevelParentTodos = todoRepository.getAllShallowTodosByIds(neededAllLevelParentTodoIds)
+            resultTodos.addAll(allLevelParentTodos)
+        }
         return extractPrioritizedTodosList(resultTodos)
     }
 
