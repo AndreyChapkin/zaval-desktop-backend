@@ -126,12 +126,22 @@ object TodoStore {
             val idsToDelete = LinkedList<Long>().apply { add(todoId) }
             while (idsToDelete.isNotEmpty()) {
                 val curDeleteId = idsToDelete.pollFirst()!!
-                aggregationInfo.modObj.parentToChildrenIds
-                    .remove(curDeleteId)
-                    ?.let {
-                        idsToDelete.addAll(it)
+                // Remove all children list for this entity and plan them for deletion too
+                val removedChildrenIds = aggregationInfo.modObj.parentToChildrenIds.remove(curDeleteId)
+                if (removedChildrenIds != null) {
+                    idsToDelete.addAll(removedChildrenIds)
+                }
+                // Remove child to parent index
+                val prevParentId = aggregationInfo.readObj.childToParentIds.remove(curDeleteId)
+                // Remove entity from children of its parent
+                if (prevParentId != null) {
+                    aggregationInfo.modObj.parentToChildrenIds[prevParentId]?.let { prevParentChildren ->
+                        prevParentChildren.removeIf { it == curDeleteId }
+                        if (prevParentChildren.size < 1) {
+                            aggregationInfo.modObj.parentToChildrenIds.remove(prevParentId)
+                        }
                     }
-                aggregationInfo.modObj.childToParentIds.remove(curDeleteId)
+                }
             }
         }
     }
@@ -139,26 +149,28 @@ object TodoStore {
     private fun updateAggregationInfo(todo: FullTodoDto) {
         val todoId = todo.id
         val prevParentId = aggregationInfo.readObj.childToParentIds[todoId]
-        val curParentId = todo.parentId
-        if (curParentId == prevParentId) {
+        val newParentId = todo.parentId
+        if (newParentId == prevParentId) {
             // Parent was not changed
             return
         }
         ensurePersistence(aggregationInfo) {
-            if (curParentId == null) {
+            if (newParentId == null) {
                 // No more parents at all
                 aggregationInfo.modObj.childToParentIds.remove(todoId)
             } else {
-                aggregationInfo.modObj.childToParentIds[todoId] = curParentId
-                val curChildrenIds = aggregationInfo.modObj.parentToChildrenIds
-                    .computeIfAbsent(curParentId) { mutableListOf() }
-                curChildrenIds.add(todoId)
+                // Point to new parent
+                aggregationInfo.modObj.childToParentIds[todoId] = newParentId
+                // Add to new parent's children
+                aggregationInfo.modObj.parentToChildrenIds
+                    .computeIfAbsent(newParentId) { mutableListOf() }
+                    .apply { add(todoId) }
             }
             // Try to remove from previous parent children
-            aggregationInfo.modObj.parentToChildrenIds[prevParentId]?.removeIf { it == todoId }
-            // Clear parent to children info if there is no more children
-            aggregationInfo.readObj.parentToChildrenIds[prevParentId]?.let {
-                if (it.size < 1) {
+            aggregationInfo.modObj.parentToChildrenIds[prevParentId]?.let { prevParentChildren ->
+                prevParentChildren.removeIf { it == todoId }
+                // Clear parent to children info if there is no more children
+                if (prevParentChildren.size < 1) {
                     aggregationInfo.modObj.parentToChildrenIds.remove(prevParentId)
                 }
             }
