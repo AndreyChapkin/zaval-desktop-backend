@@ -5,10 +5,9 @@ import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.RequestMapping
 
 @Controller
-class StaticController {
+class FrontendController {
     @RequestMapping("/todo/**")
     fun home(model: Model?): String {
-        println("In StaticController!!!")
-        return "/200.html"
+        return "/index.html"
     }
 }

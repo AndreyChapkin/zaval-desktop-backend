@@ -1,5 +1,5 @@
 {
-  "storageDirectory": "D:\\Temp\\todos-tests\\zaval-data",
-  "saveArchivesToDirectory": "D:\\Temp\\todos-tests\\archives",
+  "storageDirectory": "D:\\Temp\\zaval-app\\zaval-data",
+  "saveArchivesToDirectory": "D:\\Temp\\zaval-app\\zaval-data-archives",
   "maxArchivesNumber": 3
 }
