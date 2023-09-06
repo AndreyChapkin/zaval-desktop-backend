@@ -5,7 +5,7 @@ import org.home.zaval.zavalbackend.dto.persistence.FilesInfoCache
 import java.nio.file.Path
 
 class MultiFilePersistableObjects<T : Any>(
-    private val relativeStorageRootDirPath: String,
+    private val relativeToStorageRootDirPath: String,
     private val entityClass: Class<T>,
     private val idExtractor: (T) -> Long,
     baseEntityFilename: String = "entities",
@@ -28,8 +28,8 @@ class MultiFilePersistableObjects<T : Any>(
             mutableMapOf()
         }
         return arrayOf(
-            LoadingInfo("${relativeStorageRootDirPath}/${FILES_INFO_CACHE}", infoCacheResult.result),
-            LoadingInfo("${relativeStorageRootDirPath}/${INDICIES_FILENAME}", indicesResult.result)
+            LoadingInfo("${relativeToStorageRootDirPath}/${FILES_INFO_CACHE}", infoCacheResult.result),
+            LoadingInfo("${relativeToStorageRootDirPath}/${INDICIES_FILENAME}", indicesResult.result)
         )
     }
 
@@ -120,6 +120,14 @@ class MultiFilePersistableObjects<T : Any>(
         return null
     }
 
+    fun deleteAllEntities() {
+        val fileNames = filesInTheDir(resolve(ENTITIES_DIR_NAME))
+        fileNames.forEach { StorageFileWorker.removeFile(it) }
+        StorageFileWorker.removeFile(resolve(ENTITIES_DIR_NAME))
+        StorageFileWorker.removeFile(resolve(INDICIES_FILENAME))
+        StorageFileWorker.removeFile(resolve(FILES_INFO_CACHE))
+    }
+
     private fun readEntities(filename: String): List<T> {
         val entitiesStr = StorageFileWorker.readFile(resolve(filename))
         if (entitiesStr != null) {
@@ -178,7 +186,7 @@ class MultiFilePersistableObjects<T : Any>(
     }
 
     private fun resolve(filename: String): Path {
-        val fullDirPath = StorageFileWorker.resolveRelative(relativeStorageRootDirPath.path)
+        val fullDirPath = StorageFileWorker.resolveRelative(relativeToStorageRootDirPath.path)
         return when (filename) {
             INDICIES_FILENAME, ENTITIES_DIR_NAME, FILES_INFO_CACHE -> fullDirPath.resolve(filename)
             else -> fullDirPath.resolve("${ENTITIES_DIR_NAME}/${filename}")

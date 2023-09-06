@@ -35,6 +35,12 @@ class TodoController(
         return ResponseEntity.ok(null)
     }
 
+    @DeleteMapping("/outdated")
+    fun deleteOutdatedTodos(): ResponseEntity<Unit> {
+        todoService.deleteAllOutdatedTodos()
+        return ResponseEntity.ok(null)
+    }
+
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getAllTodos(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<LightTodoDto>> {
         return ResponseEntity.ok(todoService.getAllTodos(status))

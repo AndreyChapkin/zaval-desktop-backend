@@ -26,17 +26,17 @@ object TodoStore {
     val aggregationInfo = PersistableObject<AggregationInfoDto>(resolve(AGGREGATION_INFO_CACHE))
     val persistedValues = PersistableObject<TodoPersistedValues>(resolve(PERSISTED_VALUES_FILENAME))
     val todosHistoryContent = MultiFilePersistableObjects(
-        relativeStorageRootDirPath = resolveRelative(HISTORY_SUBDIR),
+        relativeToStorageRootDirPath = resolveRelative(HISTORY_SUBDIR),
         entityClass = TodoHistoryDto::class.java,
         idExtractor = { it.todoId },
     )
     val todosContent = MultiFilePersistableObjects(
-        relativeStorageRootDirPath = resolveRelative(ACTUAL_SUBDIR),
+        relativeToStorageRootDirPath = resolveRelative(ACTUAL_SUBDIR),
         entityClass = FullTodoDto::class.java,
         idExtractor = { it.id },
     )
     val outdatedTodosContent = MultiFilePersistableObjects(
-        relativeStorageRootDirPath = resolveRelative(OUTDATED_SUBDIR),
+        relativeToStorageRootDirPath = resolveRelative(OUTDATED_SUBDIR),
         entityClass = FullTodoDto::class.java,
         idExtractor = { it.id },
     )
@@ -117,6 +117,10 @@ object TodoStore {
             }
         }
         return result
+    }
+
+    fun deleteAllOutdatedTodos() {
+        outdatedTodosContent.deleteAllEntities()
     }
 
     private fun removeAggregationInfo(todo: FullTodoDto) {

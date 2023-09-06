@@ -69,6 +69,10 @@ class TodoService(
         todoHistoryRepository.deleteAllForIds(resultDeleteIds)
     }
 
+    fun deleteAllOutdatedTodos() {
+        TodoStore.deleteAllOutdatedTodos()
+    }
+
     /**
      * @return root <- ... parent <- todoElement -> children[]
      */
