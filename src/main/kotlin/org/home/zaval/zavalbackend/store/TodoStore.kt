@@ -28,17 +28,17 @@ object TodoStore {
     val todosHistoryContent = MultiFilePersistableObjects(
         relativeToStorageRootDirPath = resolveRelative(HISTORY_SUBDIR),
         entityClass = TodoHistoryDto::class.java,
-        idExtractor = { it.todoId },
+        idExtractor = { it.todoId.toString() },
     )
     val todosContent = MultiFilePersistableObjects(
         relativeToStorageRootDirPath = resolveRelative(ACTUAL_SUBDIR),
         entityClass = FullTodoDto::class.java,
-        idExtractor = { it.id },
+        idExtractor = { it.id.toString() },
     )
     val outdatedTodosContent = MultiFilePersistableObjects(
         relativeToStorageRootDirPath = resolveRelative(OUTDATED_SUBDIR),
         entityClass = FullTodoDto::class.java,
-        idExtractor = { it.id },
+        idExtractor = { it.id.toString() },
     )
 
     var active = true
@@ -55,14 +55,25 @@ object TodoStore {
         return todosContent.readAllEntities()
     }
 
-    fun saveOrUpdateTodo(todo: FullTodoDto) {
+    fun saveTodo(todo: FullTodoDto) {
         if (!active) {
             return
         }
-        val outdatedTodo = todosContent.saveOrUpdateEntity(todo)
+        todosContent.saveEntity(todo)
         updateAggregationInfo(todo)
-        if (outdatedTodo != null) {
-            outdatedTodosContent.saveOrUpdateEntity(outdatedTodo)
+    }
+
+    fun updateTodo(todo: FullTodoDto) {
+        if (!active) {
+            return
+        }
+        val outdatedTodo = todosContent.updateEntity(todo)
+        updateAggregationInfo(todo)
+        val isOutdatedAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo) != null
+        if (isOutdatedAlreadySaved) {
+            outdatedTodosContent.updateEntity(outdatedTodo)
+        } else {
+            outdatedTodosContent.saveEntity(outdatedTodo)
         }
     }
 
@@ -73,7 +84,12 @@ object TodoStore {
         val outdatedTodo: FullTodoDto? = todosContent.removeEntity(todo)
         removeAggregationInfo(todo)
         if (outdatedTodo != null) {
-            outdatedTodosContent.saveOrUpdateEntity(outdatedTodo)
+            val isAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo) != null
+            if (isAlreadySaved) {
+                outdatedTodosContent.updateEntity(outdatedTodo)
+            } else {
+                outdatedTodosContent.saveEntity(outdatedTodo)
+            }
         }
     }
 
@@ -81,11 +97,17 @@ object TodoStore {
         return todosHistoryContent.readAllEntities()
     }
 
+    // TODO: separate on two methods
     fun saveOrUpdateHistory(historyDto: TodoHistoryDto) {
         if (!active) {
             return
         }
-        todosHistoryContent.saveOrUpdateEntity(historyDto)
+        val isAlreadySaved = todosHistoryContent.readEntity(historyDto) != null
+        if (isAlreadySaved) {
+            todosHistoryContent.updateEntity(historyDto)
+        } else {
+            todosHistoryContent.saveEntity(historyDto)
+        }
     }
 
     fun removeHistory(historyDto: TodoHistoryDto) {

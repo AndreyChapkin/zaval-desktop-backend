@@ -2,12 +2,16 @@ package org.home.zaval.zavalbackend.persistence
 
 import org.home.zaval.zavalbackend.util.*
 import org.home.zaval.zavalbackend.dto.persistence.FilesInfoCache
+import org.home.zaval.zavalbackend.exception.ExcessiveEntitiesException
+import org.home.zaval.zavalbackend.exception.IncorrectEntityUpdateException
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
+import kotlin.io.path.name
 
 class MultiFilePersistableObjects<T : Any>(
     private val relativeToStorageRootDirPath: String,
     private val entityClass: Class<T>,
-    private val idExtractor: (T) -> Long,
+    private val idExtractor: (T) -> String,
     baseEntityFilename: String = "entities",
     private val separator: String = "\n::::::::::::::::\n",
     private val maxEntitiesInFile: Int = 4,
@@ -18,7 +22,7 @@ class MultiFilePersistableObjects<T : Any>(
     val FILES_INFO_CACHE = "files-info-cache.json"
 
     val filesInfoCache = PersistableObject<FilesInfoCache>(resolve(FILES_INFO_CACHE))
-    val indices = PersistableObject<MutableMap<Long, String>>(resolve(INDICIES_FILENAME))
+    val indices = PersistableObject<MutableMap<String, String>>(resolve(INDICIES_FILENAME))
 
     fun loadTechnicalFiles(): Array<LoadingInfo> {
         val infoCacheResult = filesInfoCache.load {
@@ -33,37 +37,31 @@ class MultiFilePersistableObjects<T : Any>(
         )
     }
 
+    fun readEntity(entity: T): T? {
+        val entityId = idExtractor(entity)
+        val fileName = indices.readObj[entityId]
+        if (fileName != null) {
+            val entities = readEntitiesInFilename(fileName)
+            return entities.find { idExtractor(it) == entityId }
+        }
+        return null
+    }
+
     fun readAllEntities(): List<T> {
         val result = mutableListOf<T>()
         filesInTheDir(resolve(ENTITIES_DIR_NAME)).forEach {
-            result.addAll(readEntities(it.fileName.toString()))
+            result.addAll(readEntitiesInFilename(it.fileName.toString()))
         }
         return result
     }
 
-    fun saveOrUpdateEntity(entity: T): T? {
+    fun saveEntity(entity: T) {
         val entityId = idExtractor(entity)
-        // Try to update
-        val existingFilename = indices.readObj[entityId]
-        if (existingFilename != null) {
-            // Entity already was persisted. Update in file
-            val savedEntities = readEntities(existingFilename)
-            var outdatedEntity: T? = null
-            val updatedEntities = savedEntities.map {
-                val curId = idExtractor(it)
-                if (curId == entityId) {
-                    outdatedEntity = it
-                    entity
-                } else it
-            }
-            writeEntities(updatedEntities, existingFilename)
-            return outdatedEntity
-        }
-        // Or save
         val incompleteFileFilename = filesInfoCache.readObj.incompleteFilenames
             .keys
             .takeIf { it.size > 0 }
             ?.first()
+        // TODO: move to separate methods
         ensurePersistenceForAll(indices, filesInfoCache) {
             if (incompleteFileFilename != null) {
                 // Save to incomplete file
@@ -83,19 +81,57 @@ class MultiFilePersistableObjects<T : Any>(
                 indices.modObj[entityId] = newFilename
             }
         }
-        return null
+        // Perhaps this files info is outdated if there is no incomplete filenames
+        CompletableFuture.runAsync {
+            updateFilesInfo()
+        }
+    }
+
+    fun updateEntity(freshEntity: T): T {
+        val entityId = idExtractor(freshEntity)
+        val updater: () -> T? = {
+            // Try to update
+            var outdated: T? = null
+            val existingFilename = indices.readObj[entityId]
+            if (existingFilename != null) {
+                // Update in file
+                val savedEntities = readEntitiesInFilename(existingFilename)
+                val updatedEntities = savedEntities.map { savedEntity ->
+                    if (idExtractor(savedEntity) == entityId) {
+                        outdated = savedEntity
+                        freshEntity
+                    } else savedEntity
+                }
+                if (outdated != null) {
+                    writeEntities(updatedEntities, existingFilename)
+                }
+            }
+            outdated
+        }
+        // Try to update
+        var outdatedEntity: T? = updater()
+        if (outdatedEntity == null) {
+            // Update didn't happen. Indices could be corrupted
+            restoreIndices()
+            // Make one more try
+            outdatedEntity = updater()
+            if (outdatedEntity == null) {
+                throw IncorrectEntityUpdateException(entityId)
+            }
+        }
+        return outdatedEntity
     }
 
     fun removeEntity(entity: T): T? {
         val entityId = idExtractor(entity)
         val filename = indices.readObj[entityId]
         if (filename != null) {
-            val savedEntities = readEntities(filename)
+            val savedEntities = readEntitiesInFilename(filename)
             var outdatedEntity: T? = null
-            val updatedEntities = savedEntities.filter {
-                val curId = idExtractor(it)
+            val updatedEntities = savedEntities.filter { savedEntity ->
+                val curId = idExtractor(savedEntity)
                 if (entityId == curId) {
-                    outdatedEntity = it
+                    outdatedEntity = savedEntity
                 }
                 entityId != curId
             }
@@ -103,6 +139,7 @@ class MultiFilePersistableObjects<T : Any>(
             if (!noMoreEntitiesInFile) {
                 writeEntities(updatedEntities, filename)
             }
+            // TODO: move to separate methods
             // Manage excessive empty files and cache
             ensurePersistenceForAll(filesInfoCache, indices) {
                 val newCount = filesInfoCache.modObj.incompleteFilenames
@@ -120,15 +157,16 @@ class MultiFilePersistableObjects<T : Any>(
         return null
     }
 
+    // TODO: update indices
     fun deleteAllEntities() {
-        val fileNames = filesInTheDir(resolve(ENTITIES_DIR_NAME))
+        val fileNames = getAllFullEntityFilePaths()
         fileNames.forEach { StorageFileWorker.removeFile(it) }
         StorageFileWorker.removeFile(resolve(ENTITIES_DIR_NAME))
         StorageFileWorker.removeFile(resolve(INDICIES_FILENAME))
         StorageFileWorker.removeFile(resolve(FILES_INFO_CACHE))
     }
 
-    private fun readEntities(filename: String): List<T> {
+    private fun readEntitiesInFilename(filename: String): List<T> {
         val entitiesStr = StorageFileWorker.readFile(resolve(filename))
         if (entitiesStr != null) {
             return extractEntities(entitiesStr)
@@ -157,6 +195,8 @@ class MultiFilePersistableObjects<T : Any>(
             .joinToString(separator)
     }
 
+    private fun getAllFullEntityFilePaths(): List<Path> = filesInTheDir(resolve(ENTITIES_DIR_NAME))
+
     private fun newEntitiesFileName(): String {
         val entitiesDir = resolve(ENTITIES_DIR_NAME)
         val fileNames = filesInTheDir(entitiesDir)
@@ -183,6 +223,63 @@ class MultiFilePersistableObjects<T : Any>(
             }
         }
         return ENTITIES_FILENAME_TEMPLATE.format(freeNumber)
+    }
+
+    private fun updateFilesInfo() {
+        val entityFileFullPaths = getAllFullEntityFilePaths()
+        val incompleteFilenamesAndCounts = mutableMapOf<String, Int>()
+        for (entityFilePath in entityFileFullPaths) {
+            val fileContent = StorageFileWorker.readFile(entityFilePath)!!
+            val separatorCount = countPatternInString(separator, fileContent)
+            // If there are no max count of entities in the file
+            val entitiesCount = separatorCount + 1
+            if (entitiesCount < maxEntitiesInFile) {
+                val fileName = entityFilePath.name
+                incompleteFilenamesAndCounts[fileName] = entitiesCount
+            }
+        }
+        ensurePersistence(filesInfoCache) {
+            incompleteFilenamesAndCounts.entries.forEach { (filename, count) ->
+                filesInfoCache.modObj.incompleteFilenames[filename] = count
+            }
+        }
+    }
+
+    private fun updateIndices(entityId: String, filename: String, remove: Boolean = false) {
+        ensurePersistence(indices) {
+            if (remove) {
+                indices.modObj.remove(entityId)
+            } else {
+                indices.modObj[entityId] = filename
+            }
+        }
+    }
+
+    private fun restoreIndices() {
+        val excessiveEntities: MutableMap<String, MutableList<String>> = mutableMapOf()
+        ensurePersistence(indices) {
+            indices.modObj.clear()
+            val entityFilePaths = getAllFullEntityFilePaths()
+            val facedEntities: MutableSet<String> = mutableSetOf()
+            for (entityFilePath in entityFilePaths) {
+                val fileName = entityFilePath.fileName.toString()
+                val savedEntities = readEntitiesInFilename(fileName)
+                savedEntities.forEach {
+                    val savedId = idExtractor(it)
+                    if (facedEntities.contains(savedId)) {
+                        excessiveEntities
+                            .computeIfAbsent(savedId) { mutableListOf() }
+                            .apply { add(fileName) }
+                    } else {
+                        facedEntities.add(savedId)
+                        indices.modObj[savedId] = fileName
+                    }
+                }
+            }
+        }
+        if (excessiveEntities.isNotEmpty()) {
+            throw ExcessiveEntitiesException(excessiveEntities.toString())
+        }
     }
 
     private fun resolve(filename: String): Path {

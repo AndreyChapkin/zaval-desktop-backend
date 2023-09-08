@@ -9,4 +9,8 @@ class AlreadyInPersistenceContextException() :
 class NotTrackedPersistableObjectModificationException() :
     RuntimeException("Persistable object modification out of persistence context is not allowed.")
 
-class UnknownFileException(filename: String) : RuntimeException("Unkown file or directory: ${filename}")
+class UnknownFileException(filename: String) : RuntimeException("Unknown file or directory: ${filename}")
+
+class IncorrectEntityUpdateException(id: Any) : RuntimeException("There is no entity with id '${id}' to update.")
+
+class ExcessiveEntitiesException(message: String) : RuntimeException("There is excessive entities. Info: ${message}")

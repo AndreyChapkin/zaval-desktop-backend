@@ -13,12 +13,12 @@ class TodoListener {
 
     @PostPersist
     fun afterPersist(todo: Todo) {
-        TodoStore.saveOrUpdateTodo(todo.toFullDto())
+        TodoStore.saveTodo(todo.toFullDto())
     }
 
     @PostUpdate
     fun afterUpdate(todo: Todo) {
-        TodoStore.saveOrUpdateTodo(todo.toFullDto())
+        TodoStore.updateTodo(todo.toFullDto())
     }
 
     @PostRemove
