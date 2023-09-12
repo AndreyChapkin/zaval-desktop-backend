@@ -34,6 +34,9 @@ interface TodoRepository : CrudRepository<Todo, Long> {
 
     @Query("select id, name, status, priority, interacted_on as interactedOn, parent_id as parentId from todo t where upper(name) like upper(:PATTERN)", nativeQuery = true)
     fun findAllShallowTodosByNameFragment(@Param("PATTERN") pattern: String): List<TodoLightView>
+
+    @Query("select description from todo t where t.id = :ID", nativeQuery = true)
+    fun getDescription(@Param("ID") todoId: Long): String
 }
 
 //@Repository

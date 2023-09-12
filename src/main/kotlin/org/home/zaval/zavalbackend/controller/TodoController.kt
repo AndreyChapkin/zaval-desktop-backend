@@ -46,12 +46,12 @@ class TodoController(
         return ResponseEntity.ok(todoService.getAllTodos(status))
     }
 
-    @GetMapping("with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @GetMapping("/with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<LightTodoDto>> {
         return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(nameFragment))
     }
 
-    @GetMapping("prioritized-list", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @GetMapping("/prioritized-list", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getPrioritizedListOfTodosWithStatus(@RequestParam("status") status: TodoStatus): ResponseEntity<TodosListDto> {
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))
     }
@@ -59,6 +59,11 @@ class TodoController(
     @GetMapping(value = ["/detailed", "/detailed/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getDetailedTodo(@PathVariable("id", required = false) todoId: String?): ResponseEntity<DetailedTodoDto?> {
         return ResponseEntity.ok(todoService.getDetailedTodo(todoId?.toLong()))
+    }
+
+    @GetMapping("/heavy-details/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getHeavyDetails(@PathVariable("id", required = false) todoId: String?): ResponseEntity<HeavyDetailsDto?> {
+        return ResponseEntity.ok(todoService.getHeavyDetails(todoId?.toLong()))
     }
 
     @PatchMapping("/move", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])

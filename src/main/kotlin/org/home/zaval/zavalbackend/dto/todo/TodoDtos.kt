@@ -54,6 +54,12 @@ class DetailedTodoDto(
     var children: List<LightTodoDto>? = listOf()
 ) : IdentifiedDto(id)
 
+class HeavyDetailsDto(
+    val todoId: Long,
+    val description: String,
+    val history: TodoHistoryDto?,
+)
+
 class TodoHistoryDto(val todoId: Long, val records: List<String>)
 
 class TodoAndParentBranchIdDto(

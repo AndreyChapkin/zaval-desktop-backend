@@ -99,6 +99,19 @@ class TodoService(
         )
     }
 
+    fun getHeavyDetails(todoId: Long?): HeavyDetailsDto? {
+        if (todoId == null) {
+            return null
+        }
+        val description = todoRepository.getDescription(todoId)
+        val history = todoHistoryRepository.findById(todoId).orElse(null)
+        return HeavyDetailsDto(
+            todoId = todoId,
+            description = description,
+            history = history?.toLightDto()
+        )
+    }
+
     fun getAllTodos(status: TodoStatus?): List<LightTodoDto> {
         return status
             ?.let { todoRepository.getAllTodosWithStatus(it.name.uppercase()).map { it.toLightDto() } }
