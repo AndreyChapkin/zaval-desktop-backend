@@ -5,7 +5,6 @@ import org.home.zaval.zavalbackend.dto.todo.MoveTodoDto
 import org.home.zaval.zavalbackend.dto.todo.LightTodoDto
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
-import org.home.zaval.zavalbackend.repository.TodoParentPathRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -29,9 +28,6 @@ class TodoFunctionalityTests {
     lateinit var todoRepository: TodoRepository
 
     @Autowired
-    lateinit var todoParentPathRepository: TodoParentPathRepository
-
-    @Autowired
     lateinit var todoHistoryRepository: TodoHistoryRepository
 
     val initTodosNameAndIdMap: MutableMap<String, Long> = mutableMapOf()
@@ -39,7 +35,6 @@ class TodoFunctionalityTests {
     @BeforeEach
     fun createTestTodos() {
         this.todoRepository.deleteAll()
-        this.todoParentPathRepository.deleteAll()
         this.todoHistoryRepository.deleteAll()
         val createTodoDtos = createInitialTestTodos()
         val createdTodos = mutableListOf<LightTodoDto>()

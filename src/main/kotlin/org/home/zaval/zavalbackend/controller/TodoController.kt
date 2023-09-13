@@ -1,12 +1,13 @@
 package org.home.zaval.zavalbackend.controller
 
-import org.home.zaval.zavalbackend.dto.*
 import org.home.zaval.zavalbackend.dto.todo.*
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.service.TodoService
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 @RestController
 @RequestMapping("/api/todo")
@@ -48,7 +49,8 @@ class TodoController(
 
     @GetMapping("/with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<LightTodoDto>> {
-        return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(nameFragment))
+        val decodedFragment = URLDecoder.decode(nameFragment, StandardCharsets.UTF_8)
+        return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(decodedFragment))
     }
 
     @GetMapping("/prioritized-list", produces = [MediaType.APPLICATION_JSON_VALUE])
