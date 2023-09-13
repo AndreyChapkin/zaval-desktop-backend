@@ -73,6 +73,7 @@ fun LightTodoDto.toEntity() = Todo(
 fun FullTodoDto.toEntity() = Todo(
     id = null,
     name = this.name,
+    priority = this.priority,
     description = this.description,
     status = this.status,
     parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
