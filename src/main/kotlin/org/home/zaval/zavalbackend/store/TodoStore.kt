@@ -117,7 +117,7 @@ object TodoStore {
         todosHistoryContent.removeEntity(historyDto)
     }
 
-    fun getAllParentsOf(todoId: Long): List<Long> {
+    fun getAllOrderedParentIdsOf(todoId: Long): List<Long> {
         val result = LinkedList<Long>()
         var curParentId = aggregationInfo.readObj.childToParentIds[todoId]
         while (curParentId != null) {
@@ -125,6 +125,10 @@ object TodoStore {
             curParentId = aggregationInfo.readObj.childToParentIds[curParentId]
         }
         return result
+    }
+
+    fun getDirectChildrenOf(todoId: Long): List<Long> {
+        return aggregationInfo.readObj.parentToChildrenIds[todoId] ?: emptyList()
     }
 
     fun getAllLevelChildrenOf(todoId: Long): List<Long> {

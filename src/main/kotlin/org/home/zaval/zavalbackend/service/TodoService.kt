@@ -34,26 +34,35 @@ class TodoService(
         return loadTodo(todoId)?.toLightDto()
     }
 
-    // TODO downgrade status of parent task to all child tasks statuses
+    // TODO optimize data fetching
     fun updateTodo(todoId: Long, updateTodoDto: UpdateTodoDto): LightTodoDto? {
-        val updatingTodo = loadTodo(todoId)
-        if (updatingTodo != null) {
+        val updatedTodo = loadTodo(todoId)
+        var statusChanged = false
+        if (updatedTodo != null) {
             // update general information
             if (updateTodoDto.general != null) {
-                updatingTodo.name = updateTodoDto.general.name
-                updatingTodo.status = updateTodoDto.general.status
-                updatingTodo.priority = updateTodoDto.general.priority
+                updatedTodo.name = updateTodoDto.general.name
+                updatedTodo.priority = updateTodoDto.general.priority
+                // Can not change status of the parent directly
+                val directChildrenIds = TodoStore.getDirectChildrenOf(todoId)
+                if (directChildrenIds.isEmpty()) {
+                    statusChanged = updatedTodo.status != updateTodoDto.general.status
+                    updatedTodo.status = updateTodoDto.general.status
+                }
             }
             if (updateTodoDto.description != null) {
-                updatingTodo.description = updateTodoDto.description
+                updatedTodo.description = updateTodoDto.description
             }
+            todoRepository.save(updatedTodo)
             // also upgrade statuses of the parents
-            // TODO optimize
-            val updatedParentTodos = upgradeAllParentStatuses(updatingTodo)
-            todoRepository.saveAll(mutableListOf(updatingTodo).apply {
-                addAll(updatedParentTodos)
-            })
-            return updatingTodo.toLightDto()
+            var allTodosToSave: List<Todo>? = null
+            if (statusChanged) {
+                allTodosToSave = correctAllParentStatuses(updatedTodo)
+            }
+            if (!allTodosToSave.isNullOrEmpty()) {
+                todoRepository.saveAll(allTodosToSave)
+            }
+            return updatedTodo.toLightDto()
         }
         return null
     }
@@ -87,7 +96,7 @@ class TodoService(
                 childrenTodos.map { it.toLightDto() }
             )
         }
-        val allParentIds = TodoStore.getAllParentsOf(todo.id!!)
+        val allParentIds = TodoStore.getAllOrderedParentIdsOf(todo.id!!)
         val parentTodos = todoRepository.findAllById(allParentIds)
         val orderedParentTodos = allParentIds.map { parentId ->
             parentTodos.find { it.id == parentId }!!
@@ -127,7 +136,7 @@ class TodoService(
         val allTodosWithStatus = todoRepository.getAllTodosWithStatus(status.name.uppercase())
         val neededAllLevelParentTodoIds = mutableSetOf<Long>()
         allTodosWithStatus.forEach {
-            val curAllParentIds = TodoStore.getAllParentsOf(it.getId()!!)
+            val curAllParentIds = TodoStore.getAllOrderedParentIdsOf(it.getId()!!)
             neededAllLevelParentTodoIds.addAll(curAllParentIds)
         }
         val resultTodos = allTodosWithStatus.toMutableList()
@@ -151,7 +160,7 @@ class TodoService(
                 todoRepository.save(movingTodo)
             } else {
                 // Eliminate circular dependencies
-                val finalParentParentIds = TodoStore.getAllParentsOf(finalParentTodo.id!!)
+                val finalParentParentIds = TodoStore.getAllOrderedParentIdsOf(finalParentTodo.id!!)
                 if (finalParentParentIds.contains(movingTodo.id)) {
                     throw CircularTodoDependencyException(
                         finalParentId = finalParentTodo.id!!,
@@ -201,16 +210,30 @@ class TodoService(
 
     private fun loadTodo(todoId: Long?): Todo? = todoId?.let { todoRepository.findById(it).orElse(null) }
 
-    private fun upgradeAllParentStatuses(todo: Todo): List<Todo> {
-        var curParent = todo.parent
-        val updatedParents = mutableListOf<Todo>()
-        while (curParent != null) {
-            if (curParent.status.priority < todo.status.priority) {
-                curParent.status = todo.status
-                updatedParents.add(curParent)
+    private fun correctAllParentStatuses(todo: Todo): List<Todo> {
+        val resultUpdatedParents = mutableListOf<Todo>()
+        var curParentTodo = todo.parent
+        var curAlreadyConsideredChildId = todo.id!!
+        var theHighestStatus = todo.status
+        while (curParentTodo != null) {
+            val directNotConsideredChildrenIds = TodoStore.getDirectChildrenOf(curParentTodo.id!!)
+                .filter { it != curAlreadyConsideredChildId }
+            val curNotConsideredChildrenLightViews =
+                todoRepository.getAllShallowTodosByIds(directNotConsideredChildrenIds)
+            // Find the highest status among the children
+            for (child in curNotConsideredChildrenLightViews) {
+                if (theHighestStatus.priority < child.getStatus().priority) {
+                    theHighestStatus = child.getStatus()
+                }
             }
-            curParent = curParent.parent
+            // Any parent must have the highest status from its children
+            if (curParentTodo.status != theHighestStatus) {
+                curParentTodo.status = theHighestStatus
+                resultUpdatedParents.add(curParentTodo)
+            }
+            curAlreadyConsideredChildId = curParentTodo.id!!
+            curParentTodo = curParentTodo.parent
         }
-        return updatedParents
+        return resultUpdatedParents
     }
 }
