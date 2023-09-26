@@ -1,62 +1,29 @@
 package org.home.zaval.zavalbackend.service
 
-import org.home.zaval.zavalbackend.repository.TodoRepository
+import org.home.zaval.zavalbackend.dto.article.ArticleDto
+import org.home.zaval.zavalbackend.dto.article.ArticleLightDto
+import org.home.zaval.zavalbackend.repository.ArticleDirectoryRepository
+import org.home.zaval.zavalbackend.repository.ArticleRepository
+import org.home.zaval.zavalbackend.store.ArticleStore
+import org.home.zaval.zavalbackend.util.toEntity
+import org.home.zaval.zavalbackend.util.toLightDto
+import org.springframework.beans.factory.config.ConfigurableBeanFactory
+import org.springframework.context.annotation.Scope
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
-//@Service
-//@Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
+@Service
+@Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 class ArticleService(
-    val todoRepository: TodoRepository,
+    val articleRepository: ArticleRepository,
+    val directoryRepository: ArticleDirectoryRepository,
 ) {
-
-//    fun createArticles(articles: List<Article>): List<Article> {
-//        return articleRepository.createArticles(articles)
-//    }
-//
-//    fun getArticle(articleId: Long?): Article? {
-//        return articleId?.let { articleRepository.getArticle(it) }
-//    }
-//
-//    fun updateArticle(articleId: Long, article: Article, command: ArticleChangeCommand): Article? {
-//        val updatingArticle = getArticle(articleId)
-//        if (updatingArticle != null) {
-//            val resultArticle = updatingArticle.makeCopyWithOverriding {
-//                when (command) {
-//                    ArticleChangeCommand.NAME -> {
-//                        fill(Article::name).withValue(article.name)
-//                    }
-//
-//                    ArticleChangeCommand.TEXT -> {
-//                        fill(Article::text).withValue(article.text)
-//                    }
-//
-//                    else -> {
-//                        fill(Article::name).withValue(article.name)
-//                        fill(Article::text).withValue(article.text)
-//                    }
-//                }
-//            }
-//            articleRepository.updateArticles(listOf(resultArticle))
-//            return resultArticle
-//        }
-//        return null
-//    }
-//
-//    fun deleteArticles(articleIds: List<Long>) {
-//        articleRepository.deleteArticles(articleIds)
-//    }
-//
-//    fun createArticleToTodoConnections(connections: List<ArticleToTodoConnection>): List<ArticleToTodoConnection> {
-//        val resultConnections = connections.filter {
-//            todoRepository.isExist(it.todoId) && articleRepository.isExist(it.articleId)
-//        }
-//        return articleRepository.createArticleToTodoConnection(resultConnections)
-//    }
-//
-//    fun getAllArticlesWithoutTexts(): List<Article> {
-//        return articleRepository.getAllArticles().map {
-//            it.makeCopyWithOverriding {
-//                fill(Article::text).withValue("")
-//            }
-//        }
-//    }
+    @Transactional
+    fun createArticle(articleDto: ArticleDto): ArticleLightDto {
+        val newArticle = articleDto.toEntity().apply {
+            id = ArticleStore.getId()
+        }
+        val savedArticleLightDto = articleRepository.save(newArticle).toLightDto()
+        return savedArticleLightDto
+    }
 }
