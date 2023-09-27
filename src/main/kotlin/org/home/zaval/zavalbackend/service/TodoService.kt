@@ -3,6 +3,7 @@ package org.home.zaval.zavalbackend.service
 import org.home.zaval.zavalbackend.dto.todo.*
 import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.TodoHistory
+import org.home.zaval.zavalbackend.entity.TodoLightView
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.exception.CircularTodoDependencyException
 import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
@@ -13,6 +14,7 @@ import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.util.LinkedList
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -54,13 +56,10 @@ class TodoService(
                 updatedTodo.description = updateTodoDto.description
             }
             todoRepository.save(updatedTodo)
+            val allOrderedParentIds = TodoStore.getAllOrderedParentIdsOf(updatedTodo.id!!)
             // also upgrade statuses of the parents
-            var allTodosToSave: List<Todo>? = null
             if (statusChanged) {
-                allTodosToSave = correctAllParentStatuses(updatedTodo)
-            }
-            if (!allTodosToSave.isNullOrEmpty()) {
-                todoRepository.saveAll(allTodosToSave)
+                correctAllParentStatuses(updatedTodo, allOrderedParentIds)
             }
             return updatedTodo.toLightDto()
         }
@@ -210,16 +209,26 @@ class TodoService(
 
     private fun loadTodo(todoId: Long?): Todo? = todoId?.let { todoRepository.findById(it).orElse(null) }
 
-    private fun correctAllParentStatuses(todo: Todo): List<Todo> {
-        val resultUpdatedParents = mutableListOf<Todo>()
-        var curParentTodo = todo.parent
+    // TODO: optimize data fetching
+    private fun correctAllParentStatuses(todo: Todo, orderedParentIds: List<Long>) {
+        val allOrderedParentLightViews = LinkedList<TodoLightView>()
+        val allParentLightViews = todoRepository.getAllShallowTodosByIds(orderedParentIds)
+        orderedParentIds.forEach { id ->
+            val parentView = allParentLightViews.find { it.getId() == id }
+            allOrderedParentLightViews.addLast(parentView)
+        }
         var curAlreadyConsideredChildId = todo.id!!
         var theHighestStatus = todo.status
-        while (curParentTodo != null) {
-            val directNotConsideredChildrenIds = TodoStore.getDirectChildrenOf(curParentTodo.id!!)
+        while (allOrderedParentLightViews.isNotEmpty()) {
+            // Get not considered children of the current parent
+            val curParentLightView = allOrderedParentLightViews.pollLast()!!
+            val directNotConsideredChildrenIds = TodoStore
+                .getDirectChildrenOf(curParentLightView.getId()!!)
                 .filter { it != curAlreadyConsideredChildId }
-            val curNotConsideredChildrenLightViews =
+            val curNotConsideredChildrenLightViews = if (directNotConsideredChildrenIds.isNotEmpty())
                 todoRepository.getAllShallowTodosByIds(directNotConsideredChildrenIds)
+            else
+                emptyList()
             // Find the highest status among the children
             for (child in curNotConsideredChildrenLightViews) {
                 if (theHighestStatus.priority < child.getStatus().priority) {
@@ -227,13 +236,12 @@ class TodoService(
                 }
             }
             // Any parent must have the highest status from its children
-            if (curParentTodo.status != theHighestStatus) {
+            if (curParentLightView.getStatus() != theHighestStatus) {
+                val curParentTodo = todoRepository.findById(curParentLightView.getId()!!).get()
                 curParentTodo.status = theHighestStatus
-                resultUpdatedParents.add(curParentTodo)
+                todoRepository.save(curParentTodo)
             }
-            curAlreadyConsideredChildId = curParentTodo.id!!
-            curParentTodo = curParentTodo.parent
+            curAlreadyConsideredChildId = curParentLightView.getId()!!
         }
-        return resultUpdatedParents
     }
 }
