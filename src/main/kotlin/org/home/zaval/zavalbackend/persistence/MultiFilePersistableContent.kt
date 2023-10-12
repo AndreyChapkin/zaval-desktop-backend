@@ -37,12 +37,12 @@ class MultiFilePersistableObjects<T : Any>(
         )
     }
 
-    fun readEntity(entity: T): T? {
-        val entityId = idExtractor(entity)
-        val fileName = indices.readObj[entityId]
+    fun readEntity(entityId: Any): T? {
+        val idKey = entityId.toString()
+        val fileName = indices.readObj[idKey]
         if (fileName != null) {
             val entities = readEntitiesInFilename(fileName)
-            return entities.find { idExtractor(it) == entityId }
+            return entities.find { idExtractor(it) == idKey }
         }
         return null
     }
@@ -122,18 +122,18 @@ class MultiFilePersistableObjects<T : Any>(
         return outdatedEntity
     }
 
-    fun removeEntity(entity: T): T? {
-        val entityId = idExtractor(entity)
-        val filename = indices.readObj[entityId]
+    fun removeEntity(entityId: Any): T? {
+        val idKey = entityId.toString()
+        val filename = indices.readObj[idKey]
         if (filename != null) {
             val savedEntities = readEntitiesInFilename(filename)
             var outdatedEntity: T? = null
             val updatedEntities = savedEntities.filter { savedEntity ->
                 val curId = idExtractor(savedEntity)
-                if (entityId == curId) {
+                if (idKey == curId) {
                     outdatedEntity = savedEntity
                 }
-                entityId != curId
+                idKey != curId
             }
             val noMoreEntitiesInFile = updatedEntities.isEmpty()
             if (!noMoreEntitiesInFile) {
@@ -150,7 +150,7 @@ class MultiFilePersistableObjects<T : Any>(
                 } else {
                     filesInfoCache.modObj.incompleteFilenames[filename] = newCount
                 }
-                indices.modObj.remove(entityId)
+                indices.modObj.remove(idKey)
             }
             return outdatedEntity
         }

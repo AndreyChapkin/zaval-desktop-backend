@@ -69,7 +69,7 @@ object TodoStore {
         }
         val outdatedTodo = todosContent.updateEntity(todo)
         updateAggregationInfo(todo)
-        val isOutdatedAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo) != null
+        val isOutdatedAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo.id) != null
         if (isOutdatedAlreadySaved) {
             outdatedTodosContent.updateEntity(outdatedTodo)
         } else {
@@ -84,7 +84,7 @@ object TodoStore {
         val outdatedTodo: FullTodoDto? = todosContent.removeEntity(todo)
         removeAggregationInfo(todo)
         if (outdatedTodo != null) {
-            val isAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo) != null
+            val isAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo.id) != null
             if (isAlreadySaved) {
                 outdatedTodosContent.updateEntity(outdatedTodo)
             } else {
@@ -102,7 +102,7 @@ object TodoStore {
         if (!active) {
             return
         }
-        val isAlreadySaved = todosHistoryContent.readEntity(historyDto) != null
+        val isAlreadySaved = todosHistoryContent.readEntity(historyDto.todoId) != null
         if (isAlreadySaved) {
             todosHistoryContent.updateEntity(historyDto)
         } else {
@@ -162,7 +162,7 @@ object TodoStore {
                     idsToDelete.addAll(removedChildrenIds)
                 }
                 // Remove child to parent index
-                val prevParentId = aggregationInfo.readObj.childToParentIds.remove(curDeleteId)
+                val prevParentId = aggregationInfo.modObj.childToParentIds.remove(curDeleteId)
                 // Remove entity from children of its parent
                 if (prevParentId != null) {
                     aggregationInfo.modObj.parentToChildrenIds[prevParentId]?.let { prevParentChildren ->
@@ -214,7 +214,6 @@ object TodoStore {
     fun resolveRelative(filename: String): String {
         return when (filename) {
             TODOS_DIR -> TODOS_DIR
-
             ACTUAL_SUBDIR, OUTDATED_SUBDIR, HISTORY_SUBDIR,
             AGGREGATION_INFO_CACHE, PERSISTED_VALUES_FILENAME -> "$TODOS_DIR/$filename"
 

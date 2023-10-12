@@ -6,6 +6,7 @@ import org.home.zaval.zavalbackend.util.LoadingInfo
 import org.home.zaval.zavalbackend.util.LoadingResult
 import java.nio.file.Path
 
+// TODO: change file path base. See MultiFilePersistableObjects
 class PersistableObject<T : Any>(
     val filePath: Path,
 ) {

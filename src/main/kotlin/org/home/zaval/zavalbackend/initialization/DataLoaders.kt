@@ -1,5 +1,7 @@
 package org.home.zaval.zavalbackend.initialization
 
+import org.home.zaval.zavalbackend.dto.article.ArticleLightDto
+import org.home.zaval.zavalbackend.dto.article.ContentTitleDto
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
 import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
@@ -11,6 +13,7 @@ import org.home.zaval.zavalbackend.store.TodoStore
 import org.home.zaval.zavalbackend.dto.persistence.AggregationInfoDto
 import org.home.zaval.zavalbackend.persistence.DataArchiver
 import org.home.zaval.zavalbackend.persistence.load
+import org.home.zaval.zavalbackend.store.ArticleStore
 import org.home.zaval.zavalbackend.util.numberedFilenamesInDir
 import org.home.zaval.zavalbackend.util.toEntity
 import java.nio.file.Files
@@ -100,6 +103,25 @@ fun loadTodoTechnicalFiles() {
     outdatedResults.forEach {
         println(it)
     }
+}
+
+fun loadArticleLights(): List<ArticleLightDto> {
+    println(":::::::: Articles ::::::::")
+    println("Technical files loading...")
+    ArticleStore.persistedValues.load {
+        ArticleStore.createDefaultPersistedValues()
+    }
+    ArticleStore.articlePopularity.load {
+        mutableMapOf()
+    }
+    // Prepare all technical files
+    ArticleStore.actualArticleLightStablesContent.loadTechnicalFiles()
+    ArticleStore.outdatedArticleLightStablesContent.loadTechnicalFiles()
+    ArticleStore.actualArticleContentsContent.loadTechnicalFiles()
+    ArticleStore.outdatedArticleContentsContent.loadTechnicalFiles()
+    println("Data loading...")
+    // Join stables with popularity
+    return ArticleStore.readAllArticleLights()
 }
 
 fun loadTodoHistoryTechnicalFiles() {

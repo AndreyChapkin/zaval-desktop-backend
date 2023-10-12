@@ -5,7 +5,8 @@ import javax.persistence.*
 interface ArticleLightView {
     fun getId(): Long?
     fun getTitle(): String
-    fun getDirectoryId(): Long?
+    fun getContentTitles(): String
+    fun getPopularity(): Long
 }
 
 @Entity
@@ -15,19 +16,23 @@ class Article(
     @Column(length = 1000)
     var title: String,
     @Column(length = 20000)
-    var content: String = "",
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "DIRECTORY_ID")
-    var directory: ArticleDirectory? = null,
+    var contentTitles: String = "",
+    var popularity: Long,
 )
 
 @Entity
-class ArticleDirectory(
+class ArticleLabel(
     @Id
     var id: Long?,
     @Column(length = 1000)
     var name: String,
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PARENT_ID")
-    var parent: ArticleDirectory? = null,
+    var popularity: Long,
+)
+
+@Entity
+class LabelToArticleConnection(
+    @Id
+    var id: Long,
+    var articleId: Long,
+    var labelId: Long,
 )
