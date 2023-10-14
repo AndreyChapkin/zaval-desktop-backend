@@ -63,33 +63,29 @@ fun Map<String, Any>.toRichFragmentDto() = RichFragmentDto(
 fun extractContentTitles(articleContent: String): List<ContentTitleDto> {
     val richFragments = JsonHelper.deserializeObject<Array<RichFragmentDto>>(articleContent)
     val resultTitleDtos = mutableListOf<ContentTitleDto>()
-    var diveLevel = 1
-    // to sign the level of dive
-    val DELIMITER_FRAGMENT = RichFragmentDto(
-        richType = "STACK_DELIMITER",
-        children = listOf()
-    )
     val fragmentsToVisitQueue = LinkedList<RichFragmentDto>().apply {
         richFragments.forEach { add(it) }
     }
     while (fragmentsToVisitQueue.isNotEmpty()) {
         val visitingFragment = fragmentsToVisitQueue.pollFirst()
         when {
-            // if delimiter - float and skip iteration
-            visitingFragment.richType == DELIMITER_FRAGMENT.richType -> {
-                diveLevel--
-            }
             // Add to result if title
-            visitingFragment.richType == "title" -> {
+            listOf("title-1", "title-2", "title-3", "title-4").contains(visitingFragment.richType) -> {
                 val titleContent = if (visitingFragment.children.isNotEmpty())
                     visitingFragment.children[0] as String
                 else ""
-                resultTitleDtos.add(ContentTitleDto(level = diveLevel, title = titleContent))
+                val titleLevel = when (visitingFragment.richType) {
+                    "title-1" -> 1
+                    "title-2" -> 2
+                    "title-3" -> 3
+                    "title-4" -> 4
+                    else -> 0
+                }
+                val titleId = visitingFragment.attributes?.let { it["id"] }!!
+                resultTitleDtos.add(ContentTitleDto(level = titleLevel, title = titleContent, id = titleId))
             }
             // Plan to visit the rich fragment children next in their DIRECT order
             visitingFragment.children.isNotEmpty() -> {
-                diveLevel++
-                fragmentsToVisitQueue.addFirst(DELIMITER_FRAGMENT)
                 for (i in visitingFragment.children.indices.reversed()) {
                     val child = visitingFragment.children[i]
                     if (child is Map<*, *>) {

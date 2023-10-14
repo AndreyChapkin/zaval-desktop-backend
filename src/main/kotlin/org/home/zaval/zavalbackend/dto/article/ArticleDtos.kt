@@ -11,6 +11,7 @@ class UpdateArticleDto(
 class ContentTitleDto(
     val level: Int,
     val title: String,
+    val id: String,
 )
 
 class ArticleLightDto(
