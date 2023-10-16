@@ -1,7 +1,6 @@
 package org.home.zaval.zavalbackend.initialization
 
 import org.home.zaval.zavalbackend.dto.article.ArticleLightDto
-import org.home.zaval.zavalbackend.dto.article.ContentTitleDto
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
 import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
@@ -105,7 +104,7 @@ fun loadTodoTechnicalFiles() {
     }
 }
 
-fun loadArticleLights(): List<ArticleLightDto> {
+fun loadArticleLightData(): List<ArticleLightDto> {
     println(":::::::: Articles ::::::::")
     println("Technical files loading...")
     ArticleStore.persistedValues.load {
@@ -119,6 +118,7 @@ fun loadArticleLights(): List<ArticleLightDto> {
     ArticleStore.outdatedArticleLightStablesContent.loadTechnicalFiles()
     ArticleStore.actualArticleContentsContent.loadTechnicalFiles()
     ArticleStore.outdatedArticleContentsContent.loadTechnicalFiles()
+    ArticleStore.labelCombinationsContent.loadTechnicalFiles()
     println("Data loading...")
     // Join stables with popularity
     return ArticleStore.readAllArticleLights()

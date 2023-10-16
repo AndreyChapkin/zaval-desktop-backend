@@ -1,13 +1,10 @@
 package org.home.zaval.zavalbackend.entity
 
-import javax.persistence.*
-
-interface ArticleLightView {
-    fun getId(): Long?
-    fun getTitle(): String
-    fun getContentTitles(): String
-    fun getPopularity(): Long
-}
+import org.home.zaval.zavalbackend.util.asUtc
+import java.time.OffsetDateTime
+import javax.persistence.Column
+import javax.persistence.Entity
+import javax.persistence.Id
 
 @Entity
 class Article(
@@ -17,7 +14,7 @@ class Article(
     var title: String,
     @Column(length = 20000)
     var contentTitles: String = "",
-    var popularity: Long,
+    var interactedOn: OffsetDateTime = OffsetDateTime.now().asUtc,
 )
 
 @Entity
@@ -26,7 +23,6 @@ class ArticleLabel(
     var id: Long?,
     @Column(length = 1000)
     var name: String,
-    var popularity: Long,
 )
 
 @Entity

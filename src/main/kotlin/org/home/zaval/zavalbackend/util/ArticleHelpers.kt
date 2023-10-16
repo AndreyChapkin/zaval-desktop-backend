@@ -2,22 +2,17 @@ package org.home.zaval.zavalbackend.util
 
 import org.home.zaval.zavalbackend.dto.article.*
 import org.home.zaval.zavalbackend.entity.Article
-import org.home.zaval.zavalbackend.entity.ArticleLightView
+import org.home.zaval.zavalbackend.entity.ArticleLabel
+import org.home.zaval.zavalbackend.entity.LabelToArticleConnection
 import org.home.zaval.zavalbackend.persistence.JsonHelper
-import java.util.LinkedList
+import java.util.*
 
-fun ArticleLightView.toLightDto() = ArticleLightDto(
-    id = this.getId() ?: -100,
-    title = this.getTitle(),
-    contentTitles = this.getContentTitles().asContentTitleDtos(),
-    popularity = this.getPopularity(),
-)
 
 fun Article.toLightDto() = ArticleLightDto(
     id = this.id!!,
     title = this.title,
     contentTitles = this.contentTitles.asContentTitleDtos(),
-    popularity = this.popularity,
+    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset(),
 )
 
 fun Article.toContentDto(content: String) = ArticleContentDto(
@@ -29,7 +24,7 @@ fun ArticleLightDto.toEntity() = Article(
     id = this.id,
     title = this.title,
     contentTitles = this.contentTitles.asString(),
-    popularity = this.popularity,
+    interactedOn = this.interactedOn.asOffsetDateTimeFromISO8601WithOffset(),
 )
 
 fun ArticleLightDto.toStableDto() = ArticleLightStableDto(
@@ -38,16 +33,37 @@ fun ArticleLightDto.toStableDto() = ArticleLightStableDto(
     contentTitles = this.contentTitles,
 )
 
+fun ArticleLightDto.toVolatileDto() = ArticleVolatileDto(
+    id = this.id,
+    interactedOn = this.interactedOn,
+)
+
 fun ArticleLightDto.toContentDto(content: String) = ArticleContentDto(
     id = this.id,
     content = content,
 )
 
-fun ArticleLightStableDto.toLightDto(popularity: Long) = ArticleLightDto(
+fun ArticleLightStableDto.toLightDto(interactedOn: String) = ArticleLightDto(
     id = this.id,
     title = this.title,
     contentTitles = this.contentTitles,
-    popularity = popularity,
+    interactedOn = interactedOn,
+)
+
+fun ArticleLabel.toDto() = ArticleLabelDto(
+    id = this.id,
+    name = this.name,
+)
+
+fun ArticleLabelDto.toEntity() = ArticleLabel(
+    id = this.id,
+    name = this.name,
+)
+
+fun LabelToArticleConnection.toDto() = LabelToArticleConnectionDto(
+    id = this.id,
+    articleId = this.articleId,
+    labelId = this.labelId
 )
 
 fun List<ContentTitleDto>.asString() = JsonHelper.serializeObject(this)

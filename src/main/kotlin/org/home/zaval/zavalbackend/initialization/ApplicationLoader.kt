@@ -66,7 +66,7 @@ class ApplicationLoader(
             TodoStore.active = true
         }
         // Articles
-        val persistedArticleLights = loadArticleLights()
+        val persistedArticleLights = loadArticleLightData()
         if (persistedArticleLights.isNotEmpty()) {
             persistedArticleLights.forEach {articleLight ->
                 articleRepository.save(articleLight.toEntity())

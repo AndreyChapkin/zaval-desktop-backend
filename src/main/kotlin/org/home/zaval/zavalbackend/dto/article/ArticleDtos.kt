@@ -4,7 +4,6 @@ import org.home.zaval.zavalbackend.dto.IdentifiedDto
 
 class UpdateArticleDto(
     val title: String?,
-    val popularity: Long?,
     val content: String?
 )
 
@@ -18,13 +17,18 @@ class ArticleLightDto(
     id: Long,
     var title: String,
     var contentTitles: List<ContentTitleDto>,
-    var popularity: Long,
+    var interactedOn: String,
 ) : IdentifiedDto(id)
 
 class ArticleLightStableDto(
     id: Long,
     var title: String,
     var contentTitles: List<ContentTitleDto>,
+) : IdentifiedDto(id)
+
+class ArticleVolatileDto(
+    id: Long,
+    val interactedOn: String
 ) : IdentifiedDto(id)
 
 class ArticleContentDto(
@@ -35,11 +39,20 @@ class ArticleContentDto(
 class ArticleLabelDto(
     var id: Long?,
     var name: String,
-    var popularity: Long,
+)
+
+class UpdateArticleLabelDto(
+    var name: String?,
 )
 
 class LabelToArticleConnectionDto(
     id: Long,
     val articleId: Long,
     val labelId: Long,
+) : IdentifiedDto(id)
+
+class LabelsCombinationDto(
+    id: Long,
+    val labelIds: List<Long> = listOf(),
+    var popularity: Long
 ) : IdentifiedDto(id)
