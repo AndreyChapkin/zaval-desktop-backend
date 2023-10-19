@@ -110,12 +110,10 @@ fun loadArticleLightData(): List<ArticleLightDto> {
     ArticleStore.persistedValues.load {
         ArticleStore.createDefaultPersistedValues()
     }
-    ArticleStore.articlePopularity.load {
-        mutableMapOf()
-    }
     // Prepare all technical files
     ArticleStore.actualArticleLightStablesContent.loadTechnicalFiles()
     ArticleStore.outdatedArticleLightStablesContent.loadTechnicalFiles()
+    ArticleStore.actualArticleVolatileContent.loadTechnicalFiles()
     ArticleStore.actualArticleContentsContent.loadTechnicalFiles()
     ArticleStore.outdatedArticleContentsContent.loadTechnicalFiles()
     ArticleStore.labelCombinationsContent.loadTechnicalFiles()

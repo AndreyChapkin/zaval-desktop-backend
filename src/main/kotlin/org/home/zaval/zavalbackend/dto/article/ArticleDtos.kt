@@ -41,6 +41,11 @@ class ArticleLabelDto(
     var name: String,
 )
 
+class ArticleLightWithLabelsDto(
+    var articleLight: ArticleLightDto,
+    var labels: List<ArticleLabelDto>
+)
+
 class UpdateArticleLabelDto(
     var name: String?,
 )

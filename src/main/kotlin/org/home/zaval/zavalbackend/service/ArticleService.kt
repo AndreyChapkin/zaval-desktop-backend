@@ -11,6 +11,7 @@ import org.home.zaval.zavalbackend.store.ArticleStore
 import org.home.zaval.zavalbackend.util.*
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
 
@@ -34,8 +35,8 @@ class ArticleService(
         return null
     }
 
-    fun getTheMostPopularArticleLights(number: Int?): List<ArticleLightDto> {
-        return articleRepository.getTheMostPopularArticles(number ?: 10).map { it.toLightDto() }
+    fun getTheMostRecentArticleLights(number: Int?): List<ArticleLightDto> {
+        return articleRepository.getTheMostRecentArticles(PageRequest.of(1, number ?: 10)).map { it.toLightDto() }
     }
 
     fun getArticleContent(articleId: Long?): ArticleContentDto? {
@@ -103,7 +104,7 @@ class ArticleService(
         }
     }
 
-    fun findAllArticleLightsByTitleFragment(titleFragment: String): List<ArticleLightDto> {
+    fun findAllArticleLightsWithTitleFragment(titleFragment: String): List<ArticleLightDto> {
         val articles = articleRepository.findAllArticlesWithTitleFragment("%$titleFragment%")
         return articles.map { it.toLightDto() }
     }
@@ -121,6 +122,30 @@ class ArticleService(
             .map { it.key }
         return articleRepository.findAllById(allLabelArticleIds)
             .map { it.toLightDto() }
+    }
+
+    fun findAllArticlesWithLabelNameFragment(nameFragment: String): List<ArticleLightWithLabelsDto> {
+        val labels = articleLabelRepository.findLabelsWithNameFragment("%$nameFragment%")
+        val labelConnections = labelToArticleConnectionRepository.findConnectionsWithLabelIds(
+            labels.map { it.id!! }
+        )
+        val articles = articleRepository.findAllById(
+            labelConnections.map { it.articleId }
+        )
+        val result = mutableListOf<ArticleLightWithLabelsDto>()
+        articles.forEach {
+            val articleConnections = labelToArticleConnectionRepository.findConnectionsWithArticleId(it.id!!)
+            val articleConnectedLabels = articleLabelRepository.findAllById(
+                articleConnections.map { it.labelId }
+            )
+            result.add(
+                ArticleLightWithLabelsDto(
+                    articleLight = it.toLightDto(),
+                    labels = articleConnectedLabels.map { it.toDto() }
+                )
+            )
+        }
+        return result
     }
 
     private fun loadArticle(articleId: Long?): Article? = articleId?.let { articleRepository.findById(it).orElse(null) }
@@ -142,6 +167,11 @@ class ArticleService(
 
     fun getArticleLabel(articleLabelId: Long?): ArticleLabelDto? {
         return loadArticleLabel(articleLabelId)?.toDto()
+    }
+
+    fun findAllArticleLabelsWithNameFragment(nameFragment: String): List<ArticleLabelDto> {
+        val labels = articleLabelRepository.findLabelsWithNameFragment("%$nameFragment%")
+        return labels.map { it.toDto() }
     }
 
     fun updateArticleLabel(articleLabelId: Long, updateArticleLabelDto: UpdateArticleLabelDto) {
@@ -193,6 +223,12 @@ class ArticleService(
         )
         ArticleStore.saveLabelsCombination(newLabelsCombinationDto)
         return newLabelsCombinationDto
+    }
+
+    fun getTheMostPopularLabelsCombinations(number: Int?): List<LabelsCombinationDto> {
+        return ArticleStore.labelCombinationsInMemory.values
+            .sortedByDescending { it.popularity }
+            .take(number ?: 10)
     }
 
     fun updateLabelsCombinationPopularity(combinationId: Long, popularity: Long) {

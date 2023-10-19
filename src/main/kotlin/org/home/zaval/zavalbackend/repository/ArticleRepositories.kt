@@ -3,6 +3,7 @@ package org.home.zaval.zavalbackend.repository
 import org.home.zaval.zavalbackend.entity.Article
 import org.home.zaval.zavalbackend.entity.ArticleLabel
 import org.home.zaval.zavalbackend.entity.LabelToArticleConnection
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -13,11 +14,11 @@ import org.springframework.stereotype.Repository
 @Repository
 interface ArticleRepository : CrudRepository<Article, Long> {
 
-    @Query("select top :NUMBER a from Article a order by a.interactedOn desc")
-    fun getTheMostPopularArticles(@Param("NUMBER") number: Int): List<Article>
+    @Query("select a from Article a order by a.interactedOn desc")
+    fun getTheMostRecentArticles(pageRequest: PageRequest): List<Article>
 
     @Query(
-        "select a from article a " +
+        "select a from Article a " +
                 "where upper(title) like upper(:PATTERN) or upper(contentTitles) like upper(:PATTERN)"
     )
     fun findAllArticlesWithTitleFragment(@Param("PATTERN") pattern: String): List<Article>
@@ -34,7 +35,7 @@ interface ArticleLabelRepository : CrudRepository<ArticleLabel, Long> {
 interface LabelToArticleConnectionRepository : CrudRepository<LabelToArticleConnection, Long> {
 
     @Query("select c from LabelToArticleConnection c where c.labelId in :LABEL_IDS")
-    fun findConnectionsWithLabelIds(@Param("LABEL_IDS") labelIds: List<Long>): List<LabelToArticleConnection>
+    fun findConnectionsWithLabelIds(@Param("LABEL_IDS") labelIds: Collection<Long>): List<LabelToArticleConnection>
 
     @Query("select c from LabelToArticleConnection c where c.articleId = :ARTICLE_ID")
     fun findConnectionsWithArticleId(@Param("ARTICLE_ID") articleId: Long): List<LabelToArticleConnection>

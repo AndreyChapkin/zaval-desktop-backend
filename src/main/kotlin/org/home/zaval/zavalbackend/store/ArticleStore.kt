@@ -59,7 +59,8 @@ object ArticleStore {
     val actualArticleVolatileContent = MultiFilePersistableObjects(
         relativeToStorageRootDirPath = ACTUAL_ARTICLE_VOLATILE_SUBDIR.toString(),
         entityClass = ArticleVolatileDto::class.java,
-        idExtractor = { it.id.toString() }
+        idExtractor = { it.id.toString() },
+        maxEntitiesInFile = 6,
     )
 
     // Labels
@@ -84,17 +85,17 @@ object ArticleStore {
         relativeToStorageRootDirPath = LABEL_COMPBINATIONS_SUBDIR.toString(),
         entityClass = LabelsCombinationDto::class.java,
         idExtractor = { it.id.toString() },
-        maxEntitiesInFile = 10,
+        maxEntitiesInFile = 6,
     )
 
-    var active = true
+    private var active = true
 
     fun saveArticleLight(article: ArticleLightDto) {
         if (!active) {
             return
         }
         actualArticleLightStablesContent.saveEntity(article.toStableDto())
-        updateArticleInteractedOn(article.id, article.interactedOn)
+        saveArticleInteractedOn(article.id, article.interactedOn)
     }
 
     fun readAllArticleLights(): List<ArticleLightDto> {
@@ -121,6 +122,15 @@ object ArticleStore {
             outdatedArticleLightStablesContent.saveEntity(outdatedArticleLight)
         }
         updateArticleInteractedOn(articleId = articleLight.id, interactedOn = articleLight.interactedOn)
+    }
+
+    fun saveArticleInteractedOn(articleId: Long, interactedOn: String) {
+        actualArticleVolatileContent.saveEntity(
+            ArticleVolatileDto(
+                id = articleId,
+                interactedOn = interactedOn,
+            )
+        )
     }
 
     fun updateArticleInteractedOn(articleId: Long, interactedOn: String) {

@@ -9,9 +9,11 @@ import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.service.ArticleService
 import org.home.zaval.zavalbackend.service.TodoService
 import org.home.zaval.zavalbackend.store.TodoStore
+import org.home.zaval.zavalbackend.util.asStringFormattedWithISO8601withOffset
 import org.home.zaval.zavalbackend.util.toEntity
 import org.springframework.boot.CommandLineRunner
 import org.springframework.stereotype.Component
+import java.time.OffsetDateTime
 
 @Component
 class ApplicationLoader(
@@ -76,13 +78,13 @@ class ApplicationLoader(
                 id = -100,
                 title = "First example",
                 contentTitles = emptyList(),
-                popularity = 0L,
+                interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
             ))
             articleService.createArticle(ArticleLightDto(
                 id = -100,
                 title = "Second example",
                 contentTitles = emptyList(),
-                popularity = 0L,
+                interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
             ))
         }
     }
