@@ -60,10 +60,22 @@ fun ArticleLabelDto.toEntity() = ArticleLabel(
     name = this.name,
 )
 
+fun LabelToArticleConnectionDto.toEntity() = LabelToArticleConnection(
+    id = this.id,
+    articleId = this.articleId,
+    labelId = this.labelId
+)
+
 fun LabelToArticleConnection.toDto() = LabelToArticleConnectionDto(
     id = this.id,
     articleId = this.articleId,
     labelId = this.labelId
+)
+
+fun LabelsCombinationDto.toFilledDto(labels: List<ArticleLabelDto>) = FilledLabelsCombinationDto(
+    id = this.id!!,
+    labels = labels,
+    popularity = this.popularity
 )
 
 fun List<ContentTitleDto>.asString() = JsonHelper.serializeObject(this)

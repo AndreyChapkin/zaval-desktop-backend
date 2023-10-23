@@ -4,7 +4,9 @@ import org.home.zaval.zavalbackend.dto.article.ArticleLightDto
 import org.home.zaval.zavalbackend.dto.todo.CreateTodoDto
 import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
+import org.home.zaval.zavalbackend.repository.ArticleLabelRepository
 import org.home.zaval.zavalbackend.repository.ArticleRepository
+import org.home.zaval.zavalbackend.repository.LabelToArticleConnectionRepository
 import org.home.zaval.zavalbackend.repository.TodoRepository
 import org.home.zaval.zavalbackend.service.ArticleService
 import org.home.zaval.zavalbackend.service.TodoService
@@ -21,6 +23,8 @@ class ApplicationLoader(
     val todoService: TodoService,
     val articleService: ArticleService,
     val articleRepository: ArticleRepository,
+    val articleLabelRepository: ArticleLabelRepository,
+    val labelToArticleConnectionRepository: LabelToArticleConnectionRepository,
 ) : CommandLineRunner {
     override fun run(vararg args: String?) {
         loadConfig()
@@ -68,7 +72,7 @@ class ApplicationLoader(
             TodoStore.active = true
         }
         // Articles
-        val persistedArticleLights = loadArticleLightData()
+        val persistedArticleLights = loadArticlesData()
         if (persistedArticleLights.isNotEmpty()) {
             persistedArticleLights.forEach {articleLight ->
                 articleRepository.save(articleLight.toEntity())
@@ -87,5 +91,17 @@ class ApplicationLoader(
                 interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
             ))
         }
+        // Labels
+        val persistedArticleLabels = loadArticleLabels()
+        persistedArticleLabels.forEach {
+            articleLabelRepository.save(it.toEntity())
+        }
+        // Label to article connections
+        val persistedConnections = loadLabelToArticleConnections()
+        persistedConnections.forEach {
+            labelToArticleConnectionRepository.save(it.toEntity())
+        }
+        // Label combinations
+        loadArticleLabelsCombinations()
     }
 }

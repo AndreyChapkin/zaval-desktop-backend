@@ -29,9 +29,9 @@ class ArticleController(
         return ResponseEntity.ok(articleService.getArticleLight(articleId.toLong()))
     }
 
-    @GetMapping("/with-labels", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun findAllArticlesWithAllLabels(@RequestBody labelIdsMap: Map<String, List<Long>>): ResponseEntity<List<ArticleLightDto>> {
-        val labelIds = labelIdsMap["labelIds"]!!
+    @PostMapping("/with-labels", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun findAllArticlesWithAllLabels(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<List<ArticleLightDto>> {
+        val labelIds = paramsBody["labelIds"]!!
         return ResponseEntity.ok(articleService.findAllArticleLightsWithAllLabels(labelIds))
     }
 
@@ -55,6 +55,11 @@ class ArticleController(
     @GetMapping("/{id}/content", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getArticleContent(@PathVariable("id") articleId: String): ResponseEntity<ArticleContentDto?> {
         return ResponseEntity.ok(articleService.getArticleContent(articleId.toLong()))
+    }
+
+    @GetMapping("/{id}/connected-labels", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getArticleLabels(@PathVariable("id") articleId: String): ResponseEntity<List<ArticleLabelDto>> {
+        return ResponseEntity.ok(articleService.getArticleLabels(articleId.toLong()))
     }
 
     @PatchMapping("/{id}", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -149,7 +154,7 @@ class ArticleController(
     }
 
     @GetMapping("/label/combination/popular", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTheMostPopularLabelsCombinations(@RequestParam("number") number: String?): ResponseEntity<List<LabelsCombinationDto>> {
+    fun getTheMostPopularLabelsCombinations(@RequestParam("number") number: String?): ResponseEntity<List<FilledLabelsCombinationDto>> {
         return ResponseEntity.ok(articleService.getTheMostPopularLabelsCombinations(number?.toInt()))
     }
 

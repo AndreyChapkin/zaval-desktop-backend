@@ -1,6 +1,8 @@
 package org.home.zaval.zavalbackend.initialization
 
+import org.home.zaval.zavalbackend.dto.article.ArticleLabelDto
 import org.home.zaval.zavalbackend.dto.article.ArticleLightDto
+import org.home.zaval.zavalbackend.dto.article.LabelToArticleConnectionDto
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
 import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
 import org.home.zaval.zavalbackend.repository.TodoRepository
@@ -104,9 +106,9 @@ fun loadTodoTechnicalFiles() {
     }
 }
 
-fun loadArticleLightData(): List<ArticleLightDto> {
+fun loadArticlesData(): List<ArticleLightDto> {
     println(":::::::: Articles ::::::::")
-    println("Technical files loading...")
+    println("Data loading...")
     ArticleStore.persistedValues.load {
         ArticleStore.createDefaultPersistedValues()
     }
@@ -116,10 +118,23 @@ fun loadArticleLightData(): List<ArticleLightDto> {
     ArticleStore.actualArticleVolatileContent.loadTechnicalFiles()
     ArticleStore.actualArticleContentsContent.loadTechnicalFiles()
     ArticleStore.outdatedArticleContentsContent.loadTechnicalFiles()
-    ArticleStore.labelCombinationsContent.loadTechnicalFiles()
-    println("Data loading...")
     // Join stables with popularity
     return ArticleStore.readAllArticleLights()
+}
+
+fun loadArticleLabels(): List<ArticleLabelDto> {
+    ArticleStore.articleLabelsContent.loadTechnicalFiles()
+    return ArticleStore.readAllArticleLabels()
+}
+
+fun loadLabelToArticleConnections(): List<LabelToArticleConnectionDto> {
+    ArticleStore.labelToArticleConnectionsContent.loadTechnicalFiles()
+    return ArticleStore.readAllLabelToArticleConnections()
+}
+
+fun loadArticleLabelsCombinations() {
+    ArticleStore.labelCombinationsContent.loadTechnicalFiles()
+    return ArticleStore.readAllLabelCombinationsInMemory()
 }
 
 fun loadTodoHistoryTechnicalFiles() {

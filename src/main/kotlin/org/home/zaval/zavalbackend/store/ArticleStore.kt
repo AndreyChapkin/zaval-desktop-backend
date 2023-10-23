@@ -249,6 +249,24 @@ object ArticleStore {
         labelCombinationsContent.saveEntity(labelsCombinationDto)
     }
 
+    fun findLabelCombinationById(combinationId: Long): LabelsCombinationDto? {
+        return labelCombinationsInMemory[combinationId]
+    }
+
+    fun readAllLabelCombinations(): List<LabelsCombinationDto> {
+        return labelCombinationsInMemory.values.toList()
+    }
+
+    fun readAllLabelCombinationsWithLabelId(labelId: Long): List<LabelsCombinationDto> {
+        val result = mutableListOf<LabelsCombinationDto>()
+        labelCombinationsInMemory.values.forEach {
+            if (it.labelIds.contains(labelId)) {
+                result.add(it)
+            }
+        }
+        return result
+    }
+
     fun readAllLabelCombinationsInMemory() {
         val labelsCombinationDtos = labelCombinationsContent.readAllEntities()
         labelCombinationsInMemory.clear()

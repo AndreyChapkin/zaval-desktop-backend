@@ -12,8 +12,10 @@ import org.home.zaval.zavalbackend.util.*
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
+import javax.transaction.Transactional
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -36,7 +38,11 @@ class ArticleService(
     }
 
     fun getTheMostRecentArticleLights(number: Int?): List<ArticleLightDto> {
-        return articleRepository.getTheMostRecentArticles(PageRequest.of(1, number ?: 10)).map { it.toLightDto() }
+        return articleRepository.findAll(
+            PageRequest.of(0, number ?: 10, Sort.by(Sort.Order.desc(Article::interactedOn.name)))
+        )
+            .content.also { println("@@@ it " + it.size) }
+            .map { it.toLightDto() }
     }
 
     fun getArticleContent(articleId: Long?): ArticleContentDto? {
@@ -51,6 +57,17 @@ class ArticleService(
             return ArticleStore.actualArticleContentsContent.readEntity(articleId!!)
         }
         return null
+    }
+
+    fun getArticleLabels(articleId: Long?): List<ArticleLabelDto> {
+        val articleExists = if (articleId != null) articleRepository.existsById(articleId) else false
+        if (articleExists) {
+            val connections = labelToArticleConnectionRepository.findConnectionsWithArticleId(articleId!!)
+            val labelIds = connections.map { it.labelId }
+            val labels = articleLabelRepository.findAllById(labelIds)
+            return labels.map { it.toDto() }
+        }
+        return emptyList()
     }
 
     fun createArticle(articleDto: ArticleLightDto): ArticleLightDto {
@@ -162,7 +179,7 @@ class ArticleService(
     }
 
     fun getAllArticleLabels(): List<ArticleLabelDto> {
-        return articleLabelRepository.findAll().map { it.toDto() }
+        return articleLabelRepository.findAll().map { it.toDto() }.sortedBy { it.name }
     }
 
     fun getArticleLabel(articleLabelId: Long?): ArticleLabelDto? {
@@ -185,12 +202,17 @@ class ArticleService(
         }
     }
 
+    @Transactional
     fun deleteArticleLabel(articleLabelId: Long) {
-        articleRepository.deleteById(articleLabelId)
+        articleLabelRepository.deleteById(articleLabelId)
         labelToArticleConnectionRepository.deleteAllConnectionsWithLabelId(articleLabelId)
         ArticleStore.apply {
             removeArticleLabel(articleLabelId)
             removeLabelToArticleConnection(articleLabelId)
+        }
+        val labelsCombinations = ArticleStore.readAllLabelCombinationsWithLabelId(articleLabelId)
+        labelsCombinations.forEach {
+            ArticleStore.removeLabelsCombination(it.id)
         }
     }
 
@@ -219,16 +241,26 @@ class ArticleService(
         val newLabelsCombinationDto = LabelsCombinationDto(
             id = ArticleStore.getId(),
             labelIds = labelIds,
-            popularity = 0,
+            popularity = 1,
         )
         ArticleStore.saveLabelsCombination(newLabelsCombinationDto)
         return newLabelsCombinationDto
     }
 
-    fun getTheMostPopularLabelsCombinations(number: Int?): List<LabelsCombinationDto> {
-        return ArticleStore.labelCombinationsInMemory.values
+    fun getTheMostPopularLabelsCombinations(number: Int?): List<FilledLabelsCombinationDto> {
+        val combinations = ArticleStore.labelCombinationsInMemory.values
             .sortedByDescending { it.popularity }
             .take(number ?: 10)
+        val allLabelIds = combinations.flatMap { it.labelIds }.toSet()
+        val allLabels = articleLabelRepository.findAllById(allLabelIds)
+        val labelsIndex = mutableMapOf<Long, ArticleLabel>().apply {
+            allLabels.forEach { this[it.id!!] = it }
+        }
+        val resultCombinationDtos = combinations.map { combination ->
+            val labelDtos = combination.labelIds.map { labelsIndex[it]!!.toDto() }
+            combination.toFilledDto(labelDtos)
+        }
+        return resultCombinationDtos
     }
 
     fun updateLabelsCombinationPopularity(combinationId: Long, popularity: Long) {
