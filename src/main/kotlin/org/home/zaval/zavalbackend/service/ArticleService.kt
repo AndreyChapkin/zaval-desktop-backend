@@ -40,9 +40,7 @@ class ArticleService(
     fun getTheMostRecentArticleLights(number: Int?): List<ArticleLightDto> {
         return articleRepository.findAll(
             PageRequest.of(0, number ?: 10, Sort.by(Sort.Order.desc(Article::interactedOn.name)))
-        )
-            .content.also { println("@@@ it " + it.size) }
-            .map { it.toLightDto() }
+        ).content.map { it.toLightDto() }
     }
 
     fun getArticleContent(articleId: Long?): ArticleContentDto? {
@@ -70,11 +68,13 @@ class ArticleService(
         return emptyList()
     }
 
-    fun createArticle(articleDto: ArticleLightDto): ArticleLightDto {
-        val newArticle = articleDto.toEntity().apply {
-            id = ArticleStore.getId()
-            interactedOn = OffsetDateTime.now()
-        }
+    fun createArticle(title: String): ArticleLightDto {
+        val newArticle = Article(
+            id = ArticleStore.getId(),
+            interactedOn = OffsetDateTime.now(),
+            title = title,
+            contentTitles = "",
+        )
         val savedArticleLightDto = articleRepository.save(newArticle).toLightDto()
         val contentDto = savedArticleLightDto.toContentDto("")
         ArticleStore.apply {
@@ -110,6 +110,7 @@ class ArticleService(
         }
     }
 
+    @Transactional
     fun deleteArticle(articleId: Long) {
         articleRepository.deleteById(articleId)
         val connectionIds = labelToArticleConnectionRepository.findConnectionsWithArticleId(articleId)
@@ -216,24 +217,30 @@ class ArticleService(
         }
     }
 
-    fun bindLabelToArticle(labelId: Long, articleId: Long) {
-        val newLabelToArticleConnection = LabelToArticleConnection(
-            id = ArticleStore.getId(),
-            articleId = articleId,
-            labelId = labelId
-        )
-        labelToArticleConnectionRepository.save(newLabelToArticleConnection)
-        ArticleStore.saveLabelToArticleConnection(newLabelToArticleConnection.toDto())
+    fun bindLabelsToArticle(labelIds: List<Long>, articleId: Long) {
+        val newLabelToArticleConnections = labelIds.map {
+            LabelToArticleConnection(
+                id = ArticleStore.getId(),
+                articleId = articleId,
+                labelId = it
+            )
+        }
+        labelToArticleConnectionRepository.saveAll(newLabelToArticleConnections)
+        newLabelToArticleConnections.forEach {
+            ArticleStore.saveLabelToArticleConnection(it.toDto())
+        }
     }
 
-    fun unbindLabelFromArticle(labelId: Long, articleId: Long) {
-        val connection = labelToArticleConnectionRepository.findConnectionWithLabelAndArticleIds(
-            labelId = labelId,
-            articleId = articleId
-        )
-        if (connection != null) {
-            labelToArticleConnectionRepository.deleteById(connection.id)
-            ArticleStore.removeLabelToArticleConnection(connection.id)
+    fun unbindLabelsFromArticle(labelIds: List<Long>, articleId: Long) {
+        val connections = labelToArticleConnectionRepository.findConnectionsWithArticleId(articleId)
+        val labelToConnectionIdIndex = connections.associate { it.labelId to it.id }
+        val connectedLabelIdsSet = connections.map { it.labelId }.toSet()
+        labelIds.forEach { labelId ->
+            if (connectedLabelIdsSet.contains(labelId)) {
+                val connectionId = labelToConnectionIdIndex[labelId]
+                labelToArticleConnectionRepository.deleteById(connectionId!!)
+                ArticleStore.removeLabelToArticleConnection(connectionId!!)
+            }
         }
     }
 

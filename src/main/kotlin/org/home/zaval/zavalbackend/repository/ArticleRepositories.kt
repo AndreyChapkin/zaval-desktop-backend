@@ -15,9 +15,6 @@ import org.springframework.stereotype.Repository
 @Repository
 interface ArticleRepository : PagingAndSortingRepository<Article, Long> {
 
-//    @Query("select a from Article a")
-//    fun getTheMostRecentArticles(pageRequest: PageRequest): List<Article>
-
     @Query(
         "select a from Article a " +
                 "where upper(title) like upper(:PATTERN) or upper(contentTitles) like upper(:PATTERN)"

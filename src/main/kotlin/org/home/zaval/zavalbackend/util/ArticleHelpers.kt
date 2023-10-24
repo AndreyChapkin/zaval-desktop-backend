@@ -80,7 +80,8 @@ fun LabelsCombinationDto.toFilledDto(labels: List<ArticleLabelDto>) = FilledLabe
 
 fun List<ContentTitleDto>.asString() = JsonHelper.serializeObject(this)
 
-fun String.asContentTitleDtos() = JsonHelper.deserializeObject<Array<ContentTitleDto>>(this).asList()
+fun String.asContentTitleDtos() = if (this.isBlank()) emptyList()
+else JsonHelper.deserializeObject<Array<ContentTitleDto>>(this).asList()
 
 fun Map<String, Any>.toRichFragmentDto() = RichFragmentDto(
     richType = this["richType"] as String,

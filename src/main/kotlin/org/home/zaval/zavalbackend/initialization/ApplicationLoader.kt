@@ -78,18 +78,8 @@ class ApplicationLoader(
                 articleRepository.save(articleLight.toEntity())
             }
         } else {
-            articleService.createArticle(ArticleLightDto(
-                id = -100,
-                title = "First example",
-                contentTitles = emptyList(),
-                interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
-            ))
-            articleService.createArticle(ArticleLightDto(
-                id = -100,
-                title = "Second example",
-                contentTitles = emptyList(),
-                interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
-            ))
+            articleService.createArticle("First example")
+            articleService.createArticle("Second example")
         }
         // Labels
         val persistedArticleLabels = loadArticleLabels()

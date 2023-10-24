@@ -15,8 +15,9 @@ class ArticleController(
     val articleService: ArticleService
 ) {
     @PostMapping(consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun createArticle(@RequestBody articleLightDto: ArticleLightDto): ResponseEntity<ArticleLightDto> {
-        return ResponseEntity.ok(articleService.createArticle(articleLightDto))
+    fun createArticle(@RequestBody titleMap: Map<String, String>): ResponseEntity<ArticleLightDto> {
+        val title = titleMap["title"]!!
+        return ResponseEntity.ok(articleService.createArticle(title))
     }
 
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -119,12 +120,12 @@ class ArticleController(
 
     @PostMapping("/label/bind")
     fun bindLabelToArticle(
-        @RequestBody idsMap: Map<String, Long>,
+        @RequestBody idsMap: Map<String, Any>,
     ): ResponseEntity<Unit> {
-        val labelId = idsMap["labelId"]!!
-        val articleId = idsMap["articleId"]!!
-        articleService.bindLabelToArticle(
-            labelId = labelId,
+        val labelIds = (idsMap["labelIds"]!! as List<Any>).map { it.toString().toLong() }
+        val articleId = idsMap["articleId"]!!.toString().toLong()
+        articleService.bindLabelsToArticle(
+            labelIds = labelIds,
             articleId = articleId,
         )
         return ResponseEntity.ok(null)
@@ -132,12 +133,12 @@ class ArticleController(
 
     @PostMapping("/label/unbind")
     fun unbindLabelFromArticle(
-        @RequestBody idsMap: Map<String, Long>,
+        @RequestBody idsMap: Map<String, Any>,
     ): ResponseEntity<Unit> {
-        val labelId = idsMap["labelId"]!!
-        val articleId = idsMap["articleId"]!!
-        articleService.unbindLabelFromArticle(
-            labelId = labelId,
+        val labelIds = (idsMap["labelIds"]!! as List<Any>).map { it.toString().toLong() }
+        val articleId = idsMap["articleId"]!!.toString().toLong()
+        articleService.unbindLabelsFromArticle(
+            labelIds = labelIds,
             articleId = articleId,
         )
         return ResponseEntity.ok(null)
