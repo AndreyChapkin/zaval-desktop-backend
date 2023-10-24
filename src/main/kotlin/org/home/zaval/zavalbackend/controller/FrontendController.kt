@@ -10,4 +10,9 @@ class FrontendController {
     fun home(model: Model?): String {
         return "/index.html"
     }
+
+    @RequestMapping("/article/**")
+    fun homeToo(model: Model?): String {
+        return "/index.html"
+    }
 }
