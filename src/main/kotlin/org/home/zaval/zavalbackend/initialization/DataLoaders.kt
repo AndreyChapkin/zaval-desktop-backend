@@ -119,7 +119,9 @@ fun loadArticlesData(): List<ArticleLightDto> {
     ArticleStore.actualArticleContentsContent.loadTechnicalFiles()
     ArticleStore.outdatedArticleContentsContent.loadTechnicalFiles()
     // Join stables with popularity
-    return ArticleStore.readAllArticleLights()
+    val result = ArticleStore.readAllArticleLights()
+    println("Loaded successfully...")
+    return result
 }
 
 fun loadArticleLabels(): List<ArticleLabelDto> {
