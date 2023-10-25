@@ -81,7 +81,7 @@ object TodoStore {
         if (!active) {
             return
         }
-        val outdatedTodo: FullTodoDto? = todosContent.removeEntity(todo)
+        val outdatedTodo: FullTodoDto? = todosContent.removeEntity(todo.id)
         removeAggregationInfo(todo)
         if (outdatedTodo != null) {
             val isAlreadySaved = outdatedTodosContent.readEntity(outdatedTodo.id) != null
@@ -114,7 +114,7 @@ object TodoStore {
         if (!active) {
             return
         }
-        todosHistoryContent.removeEntity(historyDto)
+        todosHistoryContent.removeEntity(historyDto.todoId)
     }
 
     fun getAllOrderedParentIdsOf(todoId: Long): List<Long> {
