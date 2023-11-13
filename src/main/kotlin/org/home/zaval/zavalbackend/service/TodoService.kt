@@ -12,9 +12,12 @@ import org.home.zaval.zavalbackend.store.TodoStore
 import org.home.zaval.zavalbackend.util.*
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.util.LinkedList
+import java.time.OffsetDateTime
+import java.util.*
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
@@ -36,65 +39,34 @@ class TodoService(
         return loadTodo(todoId)?.toLightDto()
     }
 
-    // TODO optimize data fetching
-    fun updateTodo(todoId: Long, updateTodoDto: UpdateTodoDto): LightTodoDto? {
-        val updatedTodo = loadTodo(todoId)
-        var statusChanged = false
-        if (updatedTodo != null) {
-            // update general information
-            if (updateTodoDto.general != null) {
-                updatedTodo.name = updateTodoDto.general.name
-                updatedTodo.priority = updateTodoDto.general.priority
-                // Can not change status of the parent directly
-                val directChildrenIds = TodoStore.getDirectChildrenOf(todoId)
-                if (directChildrenIds.isEmpty()) {
-                    statusChanged = updatedTodo.status != updateTodoDto.general.status
-                    updatedTodo.status = updateTodoDto.general.status
-                }
-            }
-            if (updateTodoDto.description != null) {
-                updatedTodo.description = updateTodoDto.description
-            }
-            todoRepository.save(updatedTodo)
-            val allOrderedParentIds = TodoStore.getAllOrderedParentIdsOf(updatedTodo.id!!)
-            // also upgrade statuses of the parents
-            if (statusChanged) {
-                correctAllParentStatuses(updatedTodo, allOrderedParentIds)
-            }
-            return updatedTodo.toLightDto()
+    fun getTheMostDatedLightTodos(count: Int?, orderType: String?): List<LightTodoDto> {
+        val sortType = if (orderType == "recent") {
+            Sort.by(Sort.Order.desc(Todo::interactedOn.name))
+        } else {
+            Sort.by(Sort.Order.asc(Todo::interactedOn.name))
         }
-        return null
+        return todoRepository.findAll(
+            PageRequest.of(0, count ?: 10, sortType)
+        ).content.map { it.toLightDto() }
     }
 
-    // TODO optimize. Standard delete methods generate too many queries
     @Transactional
-    fun deleteTodo(todoId: Long) {
-        val allLevelChildrenIds = TodoStore.getAllLevelChildrenOf(todoId)
-        val resultDeleteIds = mutableListOf<Long>()
-            .apply { add(todoId) }
-            .apply { addAll(allLevelChildrenIds) }
-        todoRepository.deleteAllById(resultDeleteIds)
-        todoHistoryRepository.deleteAllForIds(resultDeleteIds)
-    }
-
-    fun deleteAllOutdatedTodos() {
-        TodoStore.deleteAllOutdatedTodos()
+    fun getRootTodos(): List<LightTodoDto> {
+        return todoRepository.getAllTopTodos().map { it.toLightDto() }
     }
 
     /**
      * @return root <- ... parent <- todoElement -> children[]
      */
+    @Transactional
     fun getDetailedTodo(todoId: Long?): DetailedTodoDto? {
-        val todo: Todo = todoId?.let {
-            todoRepository.findById(todoId).orElse(null)
-        } ?: TODO_ROOT
-        if (todo.id == TODO_ROOT.id) {
-            val childrenTodos = todoRepository.getAllTopTodos()
-            return todo.toDetailedDto(
-                parents = emptyList(),
-                childrenTodos.map { it.toLightDto() }
-            )
+        if (todoId == null) {
+            return null
         }
+        val todo: Todo = todoRepository.findById(todoId).orElse(null)
+            ?: return null
+        todo.interactedOn = OffsetDateTime.now().asUtc
+        todoRepository.save(todo)
         val allParentIds = TodoStore.getAllOrderedParentIdsOf(todo.id!!)
         val parentTodos = todoRepository.findAllById(allParentIds)
         val orderedParentTodos = allParentIds.map { parentId ->
@@ -146,6 +118,37 @@ class TodoService(
         return extractPrioritizedTodosList(resultTodos)
     }
 
+    // TODO optimize data fetching
+    fun updateTodo(todoId: Long, updateTodoDto: UpdateTodoDto): LightTodoDto? {
+        val updatedTodo = loadTodo(todoId)
+        var statusChanged = false
+        if (updatedTodo != null) {
+            // update general information
+            if (updateTodoDto.general != null) {
+                updatedTodo.name = updateTodoDto.general.name
+                updatedTodo.priority = updateTodoDto.general.priority
+                // Can not change status of the parent directly
+                val directChildrenIds = TodoStore.getDirectChildrenOf(todoId)
+                if (directChildrenIds.isEmpty()) {
+                    statusChanged = updatedTodo.status != updateTodoDto.general.status
+                    updatedTodo.status = updateTodoDto.general.status
+                }
+            }
+            if (updateTodoDto.description != null) {
+                updatedTodo.description = updateTodoDto.description
+            }
+            updatedTodo.interactedOn = OffsetDateTime.now().asUtc
+            todoRepository.save(updatedTodo)
+            val allOrderedParentIds = TodoStore.getAllOrderedParentIdsOf(updatedTodo.id!!)
+            // also upgrade statuses of the parents
+            if (statusChanged) {
+                correctAllParentStatuses(updatedTodo, allOrderedParentIds)
+            }
+            return updatedTodo.toLightDto()
+        }
+        return null
+    }
+
     @Transactional
     fun moveTodo(moveTodoDto: MoveTodoDto) {
         if (moveTodoDto.todoId == moveTodoDto.parentId) {
@@ -170,6 +173,21 @@ class TodoService(
                 todoRepository.save(movingTodo)
             }
         }
+    }
+
+    // TODO optimize. Standard delete methods generate too many queries
+    @Transactional
+    fun deleteTodo(todoId: Long) {
+        val allLevelChildrenIds = TodoStore.getAllLevelChildrenOf(todoId)
+        val resultDeleteIds = mutableListOf<Long>()
+            .apply { add(todoId) }
+            .apply { addAll(allLevelChildrenIds) }
+        todoRepository.deleteAllById(resultDeleteIds)
+        todoHistoryRepository.deleteAllForIds(resultDeleteIds)
+    }
+
+    fun deleteAllOutdatedTodos() {
+        TodoStore.deleteAllOutdatedTodos()
     }
 
     fun getTodoHistory(todoId: Long?): TodoHistoryDto? {

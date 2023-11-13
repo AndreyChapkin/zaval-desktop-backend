@@ -31,6 +31,7 @@ class LightTodoDto(
     val priority: Int = 0,
     val status: TodoStatus,
     val parentId: Long? = null,
+    val interactedOn: String,
 ) : IdentifiedDto(id)
 
 class FullTodoDto(
@@ -50,6 +51,7 @@ class DetailedTodoDto(
     val description: String,
     val priority: Int = 0,
     val status: TodoStatus,
+    val interactedOn: String,
     var parents: List<LightTodoDto> = listOf(),
     var children: List<LightTodoDto>? = listOf()
 ) : IdentifiedDto(id)

@@ -21,6 +21,7 @@ fun TodoLightView.toLightDto() = LightTodoDto(
     status = this.getStatus(),
     priority = this.getPriority(),
     parentId = this.getParentId(),
+    interactedOn = this.getInteractedOn().asUtc.asStringFormattedWithISO8601withOffset()
 )
 
 fun Todo.toLightDto() = LightTodoDto(
@@ -28,7 +29,8 @@ fun Todo.toLightDto() = LightTodoDto(
     name = this.name,
     priority = this.priority,
     status = this.status,
-    parentId = this.parent?.id
+    parentId = this.parent?.id,
+    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset()
 )
 
 fun Todo.toDetailedDto(parents: List<LightTodoDto>, children: List<LightTodoDto>) = DetailedTodoDto(
@@ -37,6 +39,7 @@ fun Todo.toDetailedDto(parents: List<LightTodoDto>, children: List<LightTodoDto>
     description = this.description,
     priority = this.priority,
     status = this.status,
+    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset(),
     parents = parents,
     children = children
 )

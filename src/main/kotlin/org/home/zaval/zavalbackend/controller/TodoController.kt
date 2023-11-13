@@ -42,6 +42,11 @@ class TodoController(
         return ResponseEntity.ok(null)
     }
 
+    @GetMapping("/recent", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getTheMostDatedLightTodos(@RequestParam("count") count: String?, @RequestParam("orderType") orderType: String?): ResponseEntity<List<LightTodoDto>> {
+        return ResponseEntity.ok(todoService.getTheMostDatedLightTodos(count?.toInt(), orderType))
+    }
+
     @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getAllTodos(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<LightTodoDto>> {
         return ResponseEntity.ok(todoService.getAllTodos(status))
@@ -58,7 +63,12 @@ class TodoController(
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))
     }
 
-    @GetMapping(value = ["/detailed", "/detailed/{id}"], produces = [MediaType.APPLICATION_JSON_VALUE])
+    @GetMapping("/root", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getRootTodos(): ResponseEntity<List<LightTodoDto>> {
+        return ResponseEntity.ok(todoService.getRootTodos())
+    }
+
+    @GetMapping("/detailed/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getDetailedTodo(@PathVariable("id", required = false) todoId: String?): ResponseEntity<DetailedTodoDto?> {
         return ResponseEntity.ok(todoService.getDetailedTodo(todoId?.toLong()))
     }
