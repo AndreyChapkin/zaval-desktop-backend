@@ -105,12 +105,21 @@ class TodoService(
 
     fun getPrioritizedListOfTodosWithStatus(status: TodoStatus): TodosListDto {
         val allTodosWithStatus = todoRepository.getAllTodosWithStatus(status.name.uppercase())
+        return transformToLists(allTodosWithStatus)
+    }
+
+    fun getPrioritizedListOfTodos(todoIds: List<Long>): TodosListDto {
+        val childrenLightViews = todoRepository.getAllShallowTodosByIds(todoIds)
+        return transformToLists(childrenLightViews)
+    }
+
+    private fun transformToLists(childrenLightViews: List<TodoLightView>): TodosListDto {
         val neededAllLevelParentTodoIds = mutableSetOf<Long>()
-        allTodosWithStatus.forEach {
+        childrenLightViews.forEach {
             val curAllParentIds = TodoStore.getAllOrderedParentIdsOf(it.getId()!!)
             neededAllLevelParentTodoIds.addAll(curAllParentIds)
         }
-        val resultTodos = allTodosWithStatus.toMutableList()
+        val resultTodos = childrenLightViews.toMutableList()
         if (neededAllLevelParentTodoIds.isNotEmpty()) {
             val allLevelParentTodos = todoRepository.getAllShallowTodosByIds(neededAllLevelParentTodoIds)
             resultTodos.addAll(allLevelParentTodos)

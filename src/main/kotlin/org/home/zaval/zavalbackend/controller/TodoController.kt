@@ -58,8 +58,14 @@ class TodoController(
         return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(decodedFragment))
     }
 
-    @GetMapping("/prioritized-list", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getPrioritizedListOfTodosWithStatus(@RequestParam("status") status: TodoStatus): ResponseEntity<TodosListDto> {
+    @PostMapping("/prioritized-list", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getPrioritizedListOfTodos(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<TodosListDto> {
+        val todoIds = paramsBody["todoIds"] ?: emptyList()
+        return ResponseEntity.ok(todoService.getPrioritizedListOfTodos(todoIds))
+    }
+
+    @GetMapping("/prioritized-list/{status}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getPrioritizedListOfTodosWithStatus(@PathVariable("status") status: TodoStatus): ResponseEntity<TodosListDto> {
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))
     }
 
