@@ -180,4 +180,45 @@ class ArticleController(
         articleService.deleteLabelsCombination(combinationId.toLong())
         return ResponseEntity.ok(null)
     }
+
+    @PostMapping(
+        "/series",
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun createArticleSeries(@RequestBody articleSeriesDto: ArticleSeriesDto): ResponseEntity<ArticleSeriesDto> {
+        return ResponseEntity.ok(articleService.createArticleSeries(articleSeriesDto))
+    }
+
+    @GetMapping("/series/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getArticleSeries(@RequestParam("id") number: String?): ResponseEntity<ArticleSeriesDto> {
+        return ResponseEntity.ok(articleService.getArticleSeries(number?.toLong()))
+    }
+
+    @GetMapping("/series/recent", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getTheMostRecentArticleSeries(@RequestParam("number") number: String?): ResponseEntity<List<ArticleSeriesDto>> {
+        return ResponseEntity.ok(articleService.getTheMostRecentArticleSeries(number?.toInt()))
+    }
+
+    @PatchMapping(
+        "/series/{id}",
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    fun updateArticleSeries(
+        @PathVariable("id") articleSeriesId: String,
+        @RequestBody updateArticleSeriesDto: UpdateArticleSeriesDto
+    ): ResponseEntity<Unit> {
+        articleService.updateArticleSeries(
+            articleSeriesId.toLong(),
+            updateArticleSeriesDto
+        )
+        return ResponseEntity.ok(null)
+    }
+
+    @DeleteMapping("/series/{id}")
+    fun deleteArticleSeries(@PathVariable("id") articleSeriesId: String): ResponseEntity<Unit> {
+        articleService.deleteArticleSeries(articleSeriesId.toLong())
+        return ResponseEntity.ok(null)
+    }
 }

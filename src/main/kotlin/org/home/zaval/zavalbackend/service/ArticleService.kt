@@ -282,6 +282,38 @@ class ArticleService(
         ArticleStore.removeLabelsCombination(combinationId)
     }
 
+    fun createArticleSeries(articleSeriesDto: ArticleSeriesDto): ArticleSeriesDto {
+        val newArticleSeriesDto = ArticleSeriesDto(
+            id = ArticleStore.getId(),
+            name = articleSeriesDto.name,
+            articleIds = articleSeriesDto.articleIds,
+            interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
+        )
+        ArticleStore.saveArticleSeries(newArticleSeriesDto)
+        return newArticleSeriesDto
+    }
+
+    fun getArticleSeries(articleSeriesId: Long?): ArticleSeriesDto? {
+        if (articleSeriesId == null) {
+            return null
+        }
+        return ArticleStore.findArticleSeriesById(articleSeriesId)
+    }
+
+    fun getTheMostRecentArticleSeries(number: Int?): List<ArticleSeriesDto> {
+        return ArticleStore.getAllArticleSeries().sortedByDescending {
+            it.interactedOn.asOffsetDateTimeFromISO8601WithOffset()
+        }.take(number ?: 10)
+    }
+
+    fun updateArticleSeries(articleSeriesId: Long, updateArticleSeriesDto: UpdateArticleSeriesDto) {
+        ArticleStore.updateArticleSeries(articleSeriesId, updateArticleSeriesDto)
+    }
+
+    fun deleteArticleSeries(articleSeriesId: Long) {
+        ArticleStore.removeArticleSeriesDto(articleSeriesId)
+    }
+
     private fun loadArticleLabel(articleLabelId: Long?): ArticleLabel? =
         articleLabelId?.let { articleLabelRepository.findById(it).orElse(null) }
 }

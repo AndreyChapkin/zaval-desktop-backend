@@ -2,6 +2,7 @@ package org.home.zaval.zavalbackend.initialization
 
 import org.home.zaval.zavalbackend.dto.article.ArticleLabelDto
 import org.home.zaval.zavalbackend.dto.article.ArticleLightDto
+import org.home.zaval.zavalbackend.dto.article.ArticleSeriesDto
 import org.home.zaval.zavalbackend.dto.article.LabelToArticleConnectionDto
 import org.home.zaval.zavalbackend.dto.todo.FullTodoDto
 import org.home.zaval.zavalbackend.dto.todo.TodoHistoryDto
@@ -122,6 +123,15 @@ fun loadArticlesData(): List<ArticleLightDto> {
     val result = ArticleStore.readAllArticleLights()
     println("Loaded successfully...")
     return result
+}
+
+fun loadArticleSeriesData() {
+    println(":::::::: Articles series ::::::::")
+    println("Data loading...")
+    // Prepare all technical files
+    ArticleStore.articleSeriesContent.loadTechnicalFiles()
+    println("Loaded successfully...")
+    ArticleStore.readAllArticleSeriesInMemory()
 }
 
 fun loadArticleLabels(): List<ArticleLabelDto> {

@@ -93,5 +93,7 @@ class ApplicationLoader(
         }
         // Label combinations
         loadArticleLabelsCombinations()
+        // Article series
+        loadArticleSeriesData()
     }
 }

@@ -18,6 +18,7 @@ object ArticleStore {
     val ARTICLE_LABELS_SUBDIR = BASE_DIR.resolve("article-labels")
     val LABEL_TO_ARTICLE_CONNECTIONS_SUBDIR = BASE_DIR.resolve("label-to-article-connections")
     val LABEL_COMPBINATIONS_SUBDIR = BASE_DIR.resolve("label-combinations")
+    val ARTICLE_SERIES_DIR = BASE_DIR.resolve("article-series")
 
     val ACTUAL_ARTICLE_LIGHTS_SUBDIR = ARTICLE_LIGHTS_DIR.resolve("actual")
     val OUTDATED_ARTICLE_LIGHTS_SUBDIR = ARTICLE_LIGHTS_DIR.resolve("outdated")
@@ -26,6 +27,8 @@ object ArticleStore {
 
     val ACTUAL_ARTICLE_CONTENTS_SUBDIR = ARTICLE_CONTENTS_DIR.resolve("actual")
     val OUTDATED_ARTICLE_CONTENTS_SUBDIR = ARTICLE_CONTENTS_DIR.resolve("outdated")
+
+    val ACTUAL_ARTICLE_SERIES_DIR = ArticleStore.ARTICLE_SERIES_DIR.resolve("actual")
 
     val PERSISTED_VALUES_FILENAME = BASE_DIR.resolve("persisted-values.json")
 
@@ -84,6 +87,15 @@ object ArticleStore {
     val labelCombinationsContent = MultiFilePersistableObjects(
         relativeToStorageRootDirPath = LABEL_COMPBINATIONS_SUBDIR.toString(),
         entityClass = LabelsCombinationDto::class.java,
+        idExtractor = { it.id.toString() },
+        maxEntitiesInFile = 6,
+    )
+
+    // Article series
+    val articleSeriesInMemory: MutableMap<Long, ArticleSeriesDto> = mutableMapOf()
+    val articleSeriesContent = MultiFilePersistableObjects(
+        relativeToStorageRootDirPath = ACTUAL_ARTICLE_SERIES_DIR.toString(),
+        entityClass = ArticleSeriesDto::class.java,
         idExtractor = { it.id.toString() },
         maxEntitiesInFile = 6,
     )
@@ -292,6 +304,62 @@ object ArticleStore {
         }
         labelCombinationsInMemory.remove(combinationId)
         labelCombinationsContent.removeEntity(combinationId)
+    }
+
+    // Article series
+    fun saveArticleSeries(articleSeriesDto: ArticleSeriesDto) {
+        if (!active) {
+            return
+        }
+        articleSeriesInMemory[articleSeriesDto.id] = articleSeriesDto
+        articleSeriesContent.saveEntity(articleSeriesDto)
+    }
+
+    fun findArticleSeriesById(seriesId: Long): ArticleSeriesDto? {
+        return articleSeriesInMemory[seriesId]
+    }
+
+    fun getAllArticleSeries(): List<ArticleSeriesDto> {
+        return articleSeriesInMemory.values.toList()
+    }
+
+    fun getAllArticleSeriesWithArticleId(articleId: Long): List<ArticleSeriesDto> {
+        val result = mutableListOf<ArticleSeriesDto>()
+        articleSeriesInMemory.values.forEach {
+            if (it.articleIds.contains(articleId)) {
+                result.add(it)
+            }
+        }
+        return result
+    }
+
+    fun readAllArticleSeriesInMemory() {
+        val articleSeriesDtos = articleSeriesContent.readAllEntities()
+        articleSeriesInMemory.clear()
+        articleSeriesDtos.forEach {
+            articleSeriesInMemory[it.id] = it
+        }
+    }
+
+    fun updateArticleSeries(articleSeriesId: Long, updateArticleSeriesDto: UpdateArticleSeriesDto) {
+        if (!active) {
+            return
+        }
+        val persistedArticleSeriesDto = articleSeriesInMemory[articleSeriesId]
+        if (persistedArticleSeriesDto != null) {
+            updateArticleSeriesDto.name?.let { persistedArticleSeriesDto.name = it }
+            updateArticleSeriesDto.articleIds?.let { persistedArticleSeriesDto.articleIds = it }
+            updateArticleSeriesDto.interactedOn?.let { persistedArticleSeriesDto.interactedOn = it }
+            articleSeriesContent.updateEntity(persistedArticleSeriesDto)
+        }
+    }
+
+    fun removeArticleSeriesDto(articleSeriesId: Long) {
+        if (!active) {
+            return
+        }
+        articleSeriesInMemory.remove(articleSeriesId)
+        articleSeriesContent.removeEntity(articleSeriesId)
     }
 
     fun createDefaultPersistedValues(): ArticlePersistedValues {

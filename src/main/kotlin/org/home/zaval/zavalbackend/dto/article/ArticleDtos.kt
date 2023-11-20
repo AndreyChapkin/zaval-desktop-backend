@@ -62,6 +62,19 @@ class LabelsCombinationDto(
     var popularity: Long
 ) : IdentifiedDto(id)
 
+class ArticleSeriesDto(
+    id: Long,
+    var name: String,
+    var articleIds: List<Long> = listOf(),
+    var interactedOn: String,
+) : IdentifiedDto(id)
+
+class UpdateArticleSeriesDto(
+    val name: String? = null,
+    val articleIds: List<Long>? = null,
+    val interactedOn: String? = null,
+)
+
 class FilledLabelsCombinationDto(
     id: Long,
     val labels: List<ArticleLabelDto> = listOf(),
