@@ -25,6 +25,12 @@ class ArticleController(
         return ResponseEntity.ok(articleService.getAllArticleLights())
     }
 
+    @PostMapping("by-id", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getArticleLightsById(@RequestBody articleIdsMap: Map<String, List<Long>>): ResponseEntity<List<ArticleLightDto>> {
+        val articleIds = articleIdsMap["articleIds"] ?: emptyList()
+        return ResponseEntity.ok(articleService.getArticleLightsById(articleIds))
+    }
+
     @GetMapping("/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getArticleLight(@PathVariable("id") articleId: String): ResponseEntity<ArticleLightDto?> {
         return ResponseEntity.ok(articleService.getArticleLight(articleId.toLong()))
@@ -191,7 +197,7 @@ class ArticleController(
     }
 
     @GetMapping("/series/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getArticleSeries(@RequestParam("id") number: String?): ResponseEntity<ArticleSeriesDto> {
+    fun getArticleSeries(@PathVariable("id") number: String?): ResponseEntity<ArticleSeriesDto> {
         return ResponseEntity.ok(articleService.getArticleSeries(number?.toLong()))
     }
 

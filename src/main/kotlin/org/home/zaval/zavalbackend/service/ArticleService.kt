@@ -29,6 +29,11 @@ class ArticleService(
         return articleRepository.findAll().map { it.toLightDto() }
     }
 
+    fun getArticleLightsById(articleIds: List<Long>): List<ArticleLightDto> {
+        val articles = articleRepository.findAllById(articleIds).map { it.toLightDto() }
+        return articleIds.map { id -> articles.first { it.id == id } }
+    }
+
     fun getArticleLight(articleId: Long?): ArticleLightDto? {
         val article = loadArticle(articleId)
         if (article != null) {
