@@ -30,8 +30,15 @@ class ArticleService(
     }
 
     fun getArticleLightsById(articleIds: List<Long>): List<ArticleLightDto> {
-        val articles = articleRepository.findAllById(articleIds).map { it.toLightDto() }
-        return articleIds.map { id -> articles.first { it.id == id } }
+        val articles = articleRepository.findByIds(articleIds).map { it.toLightDto() }
+        return articleIds.map { id ->
+            articles.find { it.id == id } ?: ArticleLightDto(
+                id,
+                title = "REMOVED",
+                contentTitles = emptyList(),
+                interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
+            )
+        }
     }
 
     fun getArticleLight(articleId: Long?): ArticleLightDto? {

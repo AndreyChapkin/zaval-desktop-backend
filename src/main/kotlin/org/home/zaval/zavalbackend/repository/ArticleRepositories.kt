@@ -20,6 +20,9 @@ interface ArticleRepository : PagingAndSortingRepository<Article, Long> {
                 "where upper(title) like upper(:PATTERN) or upper(contentTitles) like upper(:PATTERN)"
     )
     fun findAllArticlesWithTitleFragment(@Param("PATTERN") pattern: String): List<Article>
+
+    @Query("select a from Article a where a.id in :IDS")
+    fun findByIds(@Param("IDS") ids: Collection<Long>): List<Article>
 }
 
 @Repository
