@@ -18,7 +18,7 @@ class ArticleLightDto(
     var title: String,
     var contentTitles: List<ContentTitleDto>,
     var interactedOn: String,
-) : IdentifiedDto(id)
+) : IdentifiedDto(id), ArticleSeriesContent
 
 class ArticleLightStableDto(
     id: Long,
@@ -62,12 +62,14 @@ class LabelsCombinationDto(
     var popularity: Long
 ) : IdentifiedDto(id)
 
+interface ArticleSeriesContent
+
 class ArticleSeriesDto(
     id: Long,
     var name: String,
     var articleIds: List<Long> = listOf(),
     var interactedOn: String,
-) : IdentifiedDto(id)
+) : IdentifiedDto(id), ArticleSeriesContent
 
 class UpdateArticleSeriesDto(
     val name: String? = null,

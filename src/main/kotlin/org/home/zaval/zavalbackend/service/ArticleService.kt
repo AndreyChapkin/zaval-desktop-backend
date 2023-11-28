@@ -312,6 +312,60 @@ class ArticleService(
         return ArticleStore.findArticleSeriesById(articleSeriesId)
     }
 
+    fun findAllArticleLightsAndSeriesWithFragment(fragment: String): List<ArticleSeriesContent> {
+        val articles = articleRepository
+            .findAllArticlesWithTitleFragment("%$fragment%")
+            .map { it.toLightDto() }
+        val series = ArticleStore.findArticleSeriesWithFragment(fragment)
+        return mutableListOf<ArticleSeriesContent>().apply {
+            addAll(articles)
+            addAll(series)
+        }
+    }
+
+    fun getArticleSeriesContent(articleSeriesId: Long?): List<ArticleSeriesContent> {
+        if (articleSeriesId == null) {
+            return emptyList()
+        }
+        val articleSeries = ArticleStore.findArticleSeriesById(articleSeriesId)
+        if (articleSeries != null) {
+            val articleLights = articleRepository.findByIds(articleSeries.articleIds).map { it.toLightDto() }
+            return articleSeries.articleIds.map { id ->
+                articleLights.find { it.id == id }
+                    ?: ArticleStore.findArticleSeriesById(id)
+                    ?: ArticleLightDto(
+                        id,
+                        title = "REMOVED",
+                        contentTitles = emptyList(),
+                        interactedOn = OffsetDateTime.now().asStringFormattedWithISO8601withOffset(),
+                    )
+            }
+        }
+        return emptyList()
+    }
+
+    fun findAllArticleSeriesWithFragment(fragment: String): List<ArticleSeriesDto> {
+        if (fragment.isEmpty()) {
+            return emptyList()
+        }
+        return ArticleStore.findArticleSeriesWithFragment(fragment)
+    }
+
+    fun findAllArticleSeriesWithAllLabels(labelIds: List<Long>): List<ArticleSeriesDto> {
+        val labelToArticleConnections = labelToArticleConnectionRepository.findConnectionsWithLabelIds(labelIds)
+        val articleIdsToLabelIds = mutableMapOf<Long, MutableSet<Long>>()
+        for (connection in labelToArticleConnections) {
+            articleIdsToLabelIds
+                .computeIfAbsent(connection.articleId) { mutableSetOf() }
+                .apply { add(connection.labelId) }
+        }
+        val allLabelsSize = labelIds.size
+        val allLabelArticleIds = articleIdsToLabelIds.entries
+            .filter { it.value.size == allLabelsSize }
+            .map { it.key }
+        return ArticleStore.findArticleSeriesByIds(allLabelArticleIds)
+    }
+
     fun getTheMostRecentArticleSeries(number: Int?): List<ArticleSeriesDto> {
         return ArticleStore.getAllArticleSeries().sortedByDescending {
             it.interactedOn.asOffsetDateTimeFromISO8601WithOffset()

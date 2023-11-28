@@ -319,6 +319,14 @@ object ArticleStore {
         return articleSeriesInMemory[seriesId]
     }
 
+    fun findArticleSeriesByIds(seriesIds: Collection<Long>): List<ArticleSeriesDto> {
+        return seriesIds.mapNotNull { articleSeriesInMemory[it] }
+    }
+
+    fun findArticleSeriesWithFragment(fragment: String): List<ArticleSeriesDto> {
+        return articleSeriesInMemory.values.filter { it.name.lowercase().contains(fragment.lowercase()) }
+    }
+
     fun getAllArticleSeries(): List<ArticleSeriesDto> {
         return articleSeriesInMemory.values.toList()
     }

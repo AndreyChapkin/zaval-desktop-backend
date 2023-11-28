@@ -201,6 +201,23 @@ class ArticleController(
         return ResponseEntity.ok(articleService.getArticleSeries(number?.toLong()))
     }
 
+    @GetMapping("/series/{id}/content", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getArticleSeriesContent(@PathVariable("id") id: String?): ResponseEntity<List<ArticleSeriesContent>> {
+        return ResponseEntity.ok(articleService.getArticleSeriesContent(id?.toLong()))
+    }
+
+    @GetMapping("/series/with-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun findAllArticleSeriesWithFragment(@RequestParam("fragment") fragment: String): ResponseEntity<List<ArticleSeriesDto>> {
+        val decodedFragment = URLDecoder.decode(fragment, StandardCharsets.UTF_8)
+        return ResponseEntity.ok(articleService.findAllArticleSeriesWithFragment(decodedFragment))
+    }
+
+    @PostMapping("/series/with-labels", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun findAllArticleSeriesWithAllLabels(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<List<ArticleSeriesDto>> {
+        val labelIds = paramsBody["labelIds"]!!
+        return ResponseEntity.ok(articleService.findAllArticleSeriesWithAllLabels(labelIds))
+    }
+
     @GetMapping("/series/recent", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getTheMostRecentArticleSeries(@RequestParam("number") number: String?): ResponseEntity<List<ArticleSeriesDto>> {
         return ResponseEntity.ok(articleService.getTheMostRecentArticleSeries(number?.toInt()))
