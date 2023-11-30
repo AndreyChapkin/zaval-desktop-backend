@@ -328,7 +328,7 @@ class ArticleService(
             return emptyList()
         }
         val articleSeries = ArticleStore.findArticleSeriesById(articleSeriesId)
-        if (articleSeries != null) {
+        if (articleSeries != null && articleSeries.articleIds.isNotEmpty()) {
             val articleLights = articleRepository.findByIds(articleSeries.articleIds).map { it.toLightDto() }
             return articleSeries.articleIds.map { id ->
                 articleLights.find { it.id == id }
