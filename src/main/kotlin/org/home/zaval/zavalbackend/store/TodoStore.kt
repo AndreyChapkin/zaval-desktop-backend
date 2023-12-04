@@ -59,7 +59,7 @@ object TodoStore {
         if (!active) {
             return
         }
-        todosContent.saveEntity(todo)
+        todosContent.saveEntityAndUpdateFilesInfo(todo)
         updateAggregationInfo(todo)
     }
 
@@ -73,7 +73,7 @@ object TodoStore {
         if (isOutdatedAlreadySaved) {
             outdatedTodosContent.updateEntity(outdatedTodo)
         } else {
-            outdatedTodosContent.saveEntity(outdatedTodo)
+            outdatedTodosContent.saveEntityAndUpdateFilesInfo(outdatedTodo)
         }
     }
 
@@ -88,7 +88,7 @@ object TodoStore {
             if (isAlreadySaved) {
                 outdatedTodosContent.updateEntity(outdatedTodo)
             } else {
-                outdatedTodosContent.saveEntity(outdatedTodo)
+                outdatedTodosContent.saveEntityAndUpdateFilesInfo(outdatedTodo)
             }
         }
     }
@@ -106,7 +106,7 @@ object TodoStore {
         if (isAlreadySaved) {
             todosHistoryContent.updateEntity(historyDto)
         } else {
-            todosHistoryContent.saveEntity(historyDto)
+            todosHistoryContent.saveEntityAndUpdateFilesInfo(historyDto)
         }
     }
 

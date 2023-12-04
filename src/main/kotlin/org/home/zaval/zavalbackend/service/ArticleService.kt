@@ -219,9 +219,12 @@ class ArticleService(
     fun deleteArticleLabel(articleLabelId: Long) {
         articleLabelRepository.deleteById(articleLabelId)
         labelToArticleConnectionRepository.deleteAllConnectionsWithLabelId(articleLabelId)
+        val outdatedConnections = labelToArticleConnectionRepository.findConnectionsWithLabelIds(listOf(articleLabelId))
         ArticleStore.apply {
             removeArticleLabel(articleLabelId)
-            removeLabelToArticleConnection(articleLabelId)
+            outdatedConnections.forEach { conn ->
+                removeLabelToArticleConnection(conn.id)
+            }
         }
         val labelsCombinations = ArticleStore.readAllLabelCombinationsWithLabelId(articleLabelId)
         labelsCombinations.forEach {
@@ -270,6 +273,9 @@ class ArticleService(
         val combinations = ArticleStore.labelCombinationsInMemory.values
             .sortedByDescending { it.popularity }
             .take(number ?: 10)
+        if (combinations.isEmpty()) {
+            return emptyList()
+        }
         val allLabelIds = combinations.flatMap { it.labelIds }.toSet()
         val allLabels = articleLabelRepository.findAllById(allLabelIds)
         val labelsIndex = mutableMapOf<Long, ArticleLabel>().apply {
@@ -283,11 +289,7 @@ class ArticleService(
     }
 
     fun updateLabelsCombinationPopularity(combinationId: Long, popularity: Long) {
-        val combination = ArticleStore.labelCombinationsInMemory[combinationId]
-        if (combination != null) {
-            combination.popularity = popularity
-            ArticleStore.saveLabelsCombination(combination)
-        }
+        ArticleStore.updateLabelsCombinationPopularity(combinationId, popularity)
     }
 
     fun deleteLabelsCombination(combinationId: Long) {

@@ -42,8 +42,6 @@ inline fun ensurePersistence(persistableObj: PersistableObject<*>, changer: () -
     persistableObj.inPersistenceContext = false
 }
 
-
-
 inline fun ensurePersistenceForAll(vararg persistableObjs: PersistableObject<*>, changer: () -> Unit) {
     persistableObjs.forEach {
         if (it.inPersistenceContext) {

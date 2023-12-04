@@ -106,7 +106,7 @@ object ArticleStore {
         if (!active) {
             return
         }
-        actualArticleLightStablesContent.saveEntity(article.toStableDto())
+        actualArticleLightStablesContent.saveEntityAndUpdateFilesInfo(article.toStableDto())
         saveArticleInteractedOn(article.id, article.interactedOn)
     }
 
@@ -131,13 +131,13 @@ object ArticleStore {
         if (isOutdatedAlreadySaved) {
             outdatedArticleLightStablesContent.updateEntity(outdatedArticleLight)
         } else {
-            outdatedArticleLightStablesContent.saveEntity(outdatedArticleLight)
+            outdatedArticleLightStablesContent.saveEntityAndUpdateFilesInfo(outdatedArticleLight)
         }
         updateArticleInteractedOn(articleId = articleLight.id, interactedOn = articleLight.interactedOn)
     }
 
     fun saveArticleInteractedOn(articleId: Long, interactedOn: String) {
-        actualArticleVolatileContent.saveEntity(
+        actualArticleVolatileContent.saveEntityAndUpdateFilesInfo(
             ArticleVolatileDto(
                 id = articleId,
                 interactedOn = interactedOn,
@@ -165,7 +165,7 @@ object ArticleStore {
             if (isAlreadySaved) {
                 outdatedArticleLightStablesContent.updateEntity(outdatedArticleLight)
             } else {
-                outdatedArticleLightStablesContent.saveEntity(outdatedArticleLight)
+                outdatedArticleLightStablesContent.saveEntityAndUpdateFilesInfo(outdatedArticleLight)
             }
         }
         actualArticleVolatileContent.removeEntity(articleId)
@@ -175,7 +175,7 @@ object ArticleStore {
         if (!active) {
             return
         }
-        actualArticleContentsContent.saveEntity(articleContent)
+        actualArticleContentsContent.saveEntityAndUpdateFilesInfo(articleContent)
     }
 
     fun readArticleContent(articleId: Long): ArticleContentDto? {
@@ -191,7 +191,7 @@ object ArticleStore {
         if (isOutdatedAlreadySaved) {
             outdatedArticleContentsContent.updateEntity(outdatedArticleContent)
         } else {
-            outdatedArticleContentsContent.saveEntity(outdatedArticleContent)
+            outdatedArticleContentsContent.saveEntityAndUpdateFilesInfo(outdatedArticleContent)
         }
     }
 
@@ -205,7 +205,7 @@ object ArticleStore {
             if (isAlreadySaved) {
                 outdatedArticleContentsContent.updateEntity(outdatedArticleContent)
             } else {
-                outdatedArticleContentsContent.saveEntity(outdatedArticleContent)
+                outdatedArticleContentsContent.saveEntityAndUpdateFilesInfo(outdatedArticleContent)
             }
         }
     }
@@ -214,7 +214,7 @@ object ArticleStore {
         if (!active) {
             return
         }
-        articleLabelsContent.saveEntity(articleLabel)
+        articleLabelsContent.saveEntityAndUpdateFilesInfo(articleLabel)
     }
 
     fun readAllArticleLabels(): List<ArticleLabelDto> {
@@ -239,7 +239,7 @@ object ArticleStore {
         if (!active) {
             return
         }
-        labelToArticleConnectionsContent.saveEntity(labelToArticleConnection)
+        labelToArticleConnectionsContent.saveEntityAndUpdateFilesInfo(labelToArticleConnection)
     }
 
     fun readAllLabelToArticleConnections(): List<LabelToArticleConnectionDto> {
@@ -258,7 +258,7 @@ object ArticleStore {
             return
         }
         labelCombinationsInMemory[labelsCombinationDto.id] = labelsCombinationDto
-        labelCombinationsContent.saveEntity(labelsCombinationDto)
+        labelCombinationsContent.saveEntityAndUpdateFilesInfo(labelsCombinationDto)
     }
 
     fun findLabelCombinationById(combinationId: Long): LabelsCombinationDto? {
@@ -312,7 +312,7 @@ object ArticleStore {
             return
         }
         articleSeriesInMemory[articleSeriesDto.id] = articleSeriesDto
-        articleSeriesContent.saveEntity(articleSeriesDto)
+        articleSeriesContent.saveEntityAndUpdateFilesInfo(articleSeriesDto)
     }
 
     fun findArticleSeriesById(seriesId: Long): ArticleSeriesDto? {

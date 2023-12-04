@@ -4,6 +4,7 @@ import org.home.zaval.zavalbackend.util.*
 import org.home.zaval.zavalbackend.dto.persistence.FilesInfoCache
 import org.home.zaval.zavalbackend.exception.ExcessiveEntitiesException
 import org.home.zaval.zavalbackend.exception.IncorrectEntityUpdateException
+import java.lang.RuntimeException
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import kotlin.io.path.name
@@ -22,6 +23,7 @@ class MultiFilePersistableObjects<T : Any>(
     val FILES_INFO_CACHE = "files-info-cache.json"
 
     val filesInfoCache = PersistableObject<FilesInfoCache>(resolve(FILES_INFO_CACHE))
+    // id -> entity filename
     val indices = PersistableObject<MutableMap<String, String>>(resolve(INDICIES_FILENAME))
 
     fun loadTechnicalFiles(): Array<LoadingInfo> {
@@ -55,8 +57,29 @@ class MultiFilePersistableObjects<T : Any>(
         return result
     }
 
-    fun saveEntity(entity: T) {
+    fun saveEntityAndUpdateFilesInfo(entity: T) {
+        saveEntity(entity)
+        // Perhaps this files info is outdated if there is no incomplete filenames
+        CompletableFuture.runAsync {
+            updateFilesInfo()
+        }
+    }
+
+    fun saveAllEntitiesAndUpdateFilesInfo(entities: Collection<T>) {
+        entities.forEach(::saveEntity)
+        // Perhaps this files info is outdated if there is no incomplete filenames
+        CompletableFuture.runAsync {
+            updateFilesInfo()
+        }
+    }
+
+    private fun saveEntity(entity: T) {
         val entityId = idExtractor(entity)
+        // check if the entity already exists
+        val doesEntityAlreadyExist = indices.readObj[entityId] != null
+        if (doesEntityAlreadyExist) {
+            throw RuntimeException("Try to persist already existing entity: ${entity.javaClass.simpleName} - ${entityId}")
+        }
         val incompleteFileFilename = filesInfoCache.readObj.incompleteFilenames
             .keys
             .takeIf { it.size > 0 }
@@ -80,10 +103,6 @@ class MultiFilePersistableObjects<T : Any>(
                 filesInfoCache.modObj.incompleteFilenames[newFilename] = 1
                 indices.modObj[entityId] = newFilename
             }
-        }
-        // Perhaps this files info is outdated if there is no incomplete filenames
-        CompletableFuture.runAsync {
-            updateFilesInfo()
         }
     }
 

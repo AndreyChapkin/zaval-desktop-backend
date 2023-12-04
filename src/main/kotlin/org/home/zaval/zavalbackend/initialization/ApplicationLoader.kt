@@ -36,32 +36,6 @@ class ApplicationLoader(
             TodoStore.active = false
             placeTodosInMainMemory(persistedTodos, todoRepository)
             TodoStore.active = true
-        } else {
-            val createdIds = mutableListOf<Long>()
-            val maxNumber = 10
-            for (i in 0..maxNumber) {
-                val parent = when {
-                    i == 0 || i == maxNumber / 2 -> null
-                    i == 1 || i == (maxNumber / 2) + 1 -> Todo(
-                        id = createdIds[i - 1],
-                        name = "",
-                        status = TodoStatus.BACKLOG,
-                    )
-
-                    else -> Todo(
-                        id = createdIds[i - 2],
-                        name = "",
-                        status = TodoStatus.BACKLOG,
-                    )
-                }
-                todoService.createTodo(
-                    CreateTodoDto(
-                        name = i.toString(),
-                        status = TodoStatus.BACKLOG,
-                        parentId = parent?.id,
-                    )
-                ).also { createdIds.add(it.id) }
-            }
         }
         // Histories
         loadTodoHistoryTechnicalFiles()
@@ -77,9 +51,6 @@ class ApplicationLoader(
             persistedArticleLights.forEach {articleLight ->
                 articleRepository.save(articleLight.toEntity())
             }
-        } else {
-            articleService.createArticle("First example")
-            articleService.createArticle("Second example")
         }
         // Labels
         val persistedArticleLabels = loadArticleLabels()
