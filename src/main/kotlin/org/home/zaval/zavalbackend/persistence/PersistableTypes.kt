@@ -19,6 +19,17 @@ class LongSerializer : SavedMapElementSerializer<Long> {
     }
 }
 
+class IntSerializer : SavedMapElementSerializer<Int> {
+
+    override fun serialize(obj: Int): String {
+        return obj.toString()
+    }
+
+    override fun deserialize(s: String): Int {
+        return s.toInt()
+    }
+}
+
 class StringSerializer : SavedMapElementSerializer<String> {
 
     override fun serialize(obj: String): String {

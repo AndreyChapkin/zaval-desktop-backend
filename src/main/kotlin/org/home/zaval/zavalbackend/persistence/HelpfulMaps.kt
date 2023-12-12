@@ -2,12 +2,19 @@ package org.home.zaval.zavalbackend.persistence
 
 import java.nio.file.Path
 
+/**
+ * Heavy creation
+ */
 open class SavedMap<K, V>(
     fileName: String,
     storageDirPath: Path,
     private val keySerializer: SavedMapElementSerializer<K>,
     private val valueSerializer: SavedMapElementSerializer<V>,
-) {
+) : MemoryManageable() {
+
+    init {
+        loadFromDisk()
+    }
 
     private val KEY_VALUE_SEPARATOR = ">>>>>>>>"
     private val NULL_VALUE_INDICATOR = "~~~~IT_IS_NULL~~~~"
@@ -15,63 +22,71 @@ open class SavedMap<K, V>(
 
     private val dataFilePath = storageDirPath.resolve("${fileName}.txt")
     private val inMemoryData: MutableMap<K, V> = mutableMapOf()
-    private var isInitialized = false
-    private var isReady = false
+    private var isBusyPrivate = false
+    override val isBusy: Boolean
+        get() = isBusyPrivate
+
+    val data: Map<K, V>
+        get() = inMemoryData.toMap()
 
     fun put(key: K, value: V): V? {
-        panicIfNotReady()
-        // save to RAM
-        val prevValue = inMemoryData.put(key, value)
-        if (prevValue == null || prevValue != value) {
-            // save to persistent memory
-            addToFile(key, value)
+        return reserveWhileDo {
+            // save to RAM
+            val prevValue = inMemoryData.put(key, value)
+            if (prevValue == null || prevValue != value) {
+                // save to persistent memory
+                addToFile(key, value)
+            }
+            return@reserveWhileDo prevValue
         }
-        return prevValue
     }
 
     fun get(key: K): V? {
-        panicIfNotReady()
         return inMemoryData[key]
     }
 
     fun remove(key: K): V? {
-        panicIfNotReady()
-        // remove from persistent memory
-        addToFile(key, null)
-        // remove from RAM
-        return inMemoryData.remove(key)
-    }
-
-    fun initialize() {
-        loadFromDisk()
-        isInitialized = true
-        isReady = true
-    }
-
-    fun tryToReduceSize() {
-        if (occupancyRate() < 1) {
-            rewriteOnDisk()
+        return reserveWhileDo {
+            // remove from persistent memory
+            addToFile(key, null)
+            // remove from RAM
+            return@reserveWhileDo inMemoryData.remove(key)
         }
     }
 
-    /**
-     * @return <actual records number>/<all records number>
-     */
-    private fun occupancyRate(): Double {
-        val allRecords = readAllRecords()
-        val foldedRecords = foldRecords(allRecords)
-        return foldedRecords.size.toDouble() / allRecords.size
+    override fun estimateOccupancy(): Double {
+        return reserveWhileDo {
+            val allRecords = readAllRecords()
+            val effectiveSize = inMemoryData.size
+            return@reserveWhileDo effectiveSize.toDouble() / allRecords.size
+        }
+    }
+
+    override fun reduceSize() {
+        reserveWhileDo {
+            val allRecordsSize = readAllRecords().size
+            val effectiveSize = inMemoryData.size
+            if (allRecordsSize != effectiveSize) {
+                rewriteOnDisk()
+            }
+        }
+    }
+
+    override fun markAsBusy() {
+        isBusyPrivate = true
+    }
+
+    override fun markAsIdle() {
+        isBusyPrivate = false
     }
 
     private fun loadFromDisk() {
-        makeBusyWhileDo {
-            val allRecords = readAllRecords()
-            inMemoryData.clear()
-            for (record in allRecords) {
-                val (key, value) = parseRecord(record)
-                if (value != null) {
-                    inMemoryData[key] = value
-                }
+        val allRecords = readAllRecords()
+        inMemoryData.clear()
+        for (record in allRecords) {
+            val (key, value) = parseRecord(record)
+            if (value != null) {
+                inMemoryData[key] = value
             }
         }
     }
@@ -80,46 +95,30 @@ open class SavedMap<K, V>(
      * Clear the index file from garbage and reduce the file size.
      */
     private fun rewriteOnDisk() {
-        makeBusyWhileDo {
-            val serializedIndex = inMemoryData.entries.joinToString(System.lineSeparator()) {
-                createRecord(it.key, it.value)
-            }
-            StorageFileWorker.writeToFile(serializedIndex, dataFilePath)
+        val serializedData = inMemoryData.entries.joinToString(RECORD_SEPARATOR) {
+            createRecord(it.key, it.value)
         }
+        StorageFileWorker.writeToFile(serializedData, dataFilePath)
     }
 
     /**
-     * Only add to the file. Previous entries become garbage.
+     * Only add to the file. Previous same key entries become garbage.
      */
     private fun addToFile(key: K, value: V?) {
-        makeBusyWhileDo {
-            val newRecord = createRecord(key, value)
-            val isFirstRecord = inMemoryData.isEmpty()
-            val addPortion = if (isFirstRecord)
-                newRecord
-            else
-                "${RECORD_SEPARATOR}${newRecord}"
-            StorageFileWorker.appendToFile(addPortion, dataFilePath)
+        val newRecord = createRecord(key, value)
+        val isFirstRecord = inMemoryData.isEmpty()
+        val addPortion = if (isFirstRecord) {
+            newRecord
+        } else {
+            "${RECORD_SEPARATOR}${newRecord}"
         }
+        StorageFileWorker.appendToFile(addPortion, dataFilePath)
     }
 
     private fun readAllRecords(): List<String> {
         return StorageFileWorker.readFile(dataFilePath)
             ?.split(RECORD_SEPARATOR)
             ?: emptyList()
-    }
-
-    private fun foldRecords(allRecords: Collection<String>): Map<K, String> {
-        val keyToRecordMap = allRecords
-            .associateBy { parseRecord(it).first }
-            .toMutableMap()
-        // remove null entries
-        for ((key, value) in keyToRecordMap) {
-            if (value.endsWith(NULL_VALUE_INDICATOR)) {
-                keyToRecordMap.remove(key)
-            }
-        }
-        return keyToRecordMap
     }
 
     private fun createRecord(key: K, value: V?): String {
@@ -138,20 +137,6 @@ open class SavedMap<K, V>(
         else
             valueSerializer.deserialize(valueStr)
         return key to value
-    }
-
-    private inline fun makeBusyWhileDo(action: () -> Unit) {
-        if (isInitialized) {
-            isReady = false
-            action()
-            isReady = true
-        }
-    }
-
-    private fun panicIfNotReady() {
-        if (!isReady) {
-            throw FileIsNotReadyException(dataFilePath.toString())
-        }
     }
 }
 
@@ -200,6 +185,15 @@ class LRUCacheMap<K, V>(
             // make it recent
             recentList.moveToHead(foundNode)
             return foundNode.value.second
+        }
+        return null
+    }
+
+    fun remove(key: K): V? {
+        val removedNode = recentNodesIndexMap.remove(key)
+        if (removedNode != null) {
+            recentList.remove(removedNode)
+            return removedNode.value.second
         }
         return null
     }
