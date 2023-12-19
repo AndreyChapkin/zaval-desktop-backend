@@ -41,6 +41,19 @@ class StringSerializer : SavedMapElementSerializer<String> {
     }
 }
 
+class LongListSerializer : SavedMapElementSerializer<List<Long>> {
+
+    private val ELEMENT_SEPARATOR = " , "
+
+    override fun serialize(obj: List<Long>): String {
+        return obj.joinToString(ELEMENT_SEPARATOR)
+    }
+
+    override fun deserialize(s: String): List<Long> {
+        return s.split(ELEMENT_SEPARATOR).map { it.toLong() }
+    }
+}
+
 class DoubleLinkedList<T>(elements: Collection<T>) {
     var head: DoubleLinkedListNode<T>? = null
     var tail: DoubleLinkedListNode<T>? = null

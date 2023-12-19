@@ -81,12 +81,17 @@ open class SavedMap<K, V>(
     }
 
     private fun loadFromDisk() {
-        val allRecords = readAllRecords()
         inMemoryData.clear()
-        for (record in allRecords) {
-            val (key, value) = parseRecord(record)
-            if (value != null) {
-                inMemoryData[key] = value
+        val allRecords = readAllRecords()
+        if (allRecords.isEmpty()) {
+            // Ensure existence
+            StorageFileWorker.writeToFile("", dataFilePath)
+        } else {
+            for (record in allRecords) {
+                val (key, value) = parseRecord(record)
+                if (value != null) {
+                    inMemoryData[key] = value
+                }
             }
         }
     }

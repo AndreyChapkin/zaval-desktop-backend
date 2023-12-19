@@ -5,19 +5,48 @@ import org.home.zaval.zavalbackend.util.filesInTheDir
 import java.lang.RuntimeException
 import java.nio.file.Path
 import kotlin.io.path.name
+import kotlin.reflect.KProperty1
+import kotlin.reflect.jvm.javaField
+import kotlin.reflect.jvm.jvmErasure
 
 /**
  * Find file number with entity id
  * id -> file number
  */
-class IdMap(
-    fileName: String = "indices-id",
+class IdChamberIndex(
+    fileName: String = "id-index",
     storageDirPath: Path,
 ) : SavedMap<Long, Int>(
     fileName = fileName,
     storageDirPath = storageDirPath,
     keySerializer = LongSerializer(),
     valueSerializer = IntSerializer(),
+)
+
+/**
+ * Value -> list of indices
+ */
+class StringPropIndex(
+    propName: String,
+    storageDirPath: Path,
+) : SavedMap<String, List<Long>>(
+    fileName = "${propName}-index",
+    storageDirPath = storageDirPath,
+    keySerializer = StringSerializer(),
+    valueSerializer = LongListSerializer(),
+)
+
+/**
+ * Value -> list of indices
+ */
+class LongPropIndex(
+    propName: String,
+    storageDirPath: Path,
+) : SavedMap<Long, List<Long>>(
+    fileName = "${propName}-index",
+    storageDirPath = storageDirPath,
+    keySerializer = LongSerializer(),
+    valueSerializer = LongListSerializer(),
 )
 
 data class EntityFileContentInfo(
@@ -46,8 +75,10 @@ class DeletedFileStatus(fileNumber: Int) : EntityFileStatus(fileNumber)
 
 interface CrudStorage<T : IdentifiedDto> {
     fun saveEntity(entity: T)
-    fun updateEntity(entity: T)
+    fun readEntity(id: Long): T?
     fun readEntities(ids: Collection<Long>): List<T>
+    fun updateEntity(entity: T)
+    fun removeEntity(id: Long)
     fun removeEntities(ids: Collection<Long>)
 }
 
@@ -78,31 +109,32 @@ abstract class MemoryManageable {
     }
 }
 
-class EntityFilesManager<T : IdentifiedDto>(
+class EntityChambersManager<T : IdentifiedDto>(
     subdirName: String,
     storageDirPath: Path,
     entityClass: Class<T>,
     private val maxEntityNumberInFile: Int = 10,
 ) : MemoryManageable() {
-    private val entityFiles = EntityFiles(subdirName, storageDirPath, entityClass)
+    private val managerPath = storageDirPath.resolve(subdirName)
+    private val entityChambers = EntityChambers("data-files", managerPath, entityClass)
 
     /**
      * Entity id to file number
      */
-    private val idMap = IdMap(storageDirPath = storageDirPath)
+    private val idMap = IdChamberIndex(storageDirPath = managerPath)
 
     /**
      * File number to entity ids
      */
     private val incompleteFileMap = SavedMap(
         fileName = "incomplete-files.txt",  // file number -> entity number
-        storageDirPath = storageDirPath,
+        storageDirPath = managerPath,
         keySerializer = IntSerializer(),
         valueSerializer = IntSerializer(),
     )
 
     override val isBusy: Boolean
-        get() = entityFiles.isBusy || idMap.isBusy || incompleteFileMap.isBusy
+        get() = entityChambers.isBusy || idMap.isBusy || incompleteFileMap.isBusy
 
     fun saveEntity(entity: T) {
         reserveWhileDo {
@@ -111,7 +143,7 @@ class EntityFilesManager<T : IdentifiedDto>(
                 ?.keys
                 ?.random()
             // save
-            val fileStatus = entityFiles.saveOrUpdateEntity(entity, incompleteFileNumber) as InformedFileStatus
+            val fileStatus = entityChambers.saveOrUpdateEntity(entity, incompleteFileNumber) as InformedFileStatus
             // update incomplete files info
             if (fileStatus.info.entityNumber < maxEntityNumberInFile) {
                 incompleteFileMap.put(fileStatus.fileNumber, fileStatus.info.entityNumber)
@@ -127,7 +159,7 @@ class EntityFilesManager<T : IdentifiedDto>(
         reserveWhileDo {
             val fileNumber = idMap.get(entity.id)
                 ?: throw RuntimeException("Trying to update not existing entity: ${entity.javaClass.simpleName} - ${entity.id}")
-            entityFiles.saveOrUpdateEntity(entity, fileNumber)
+            entityChambers.saveOrUpdateEntity(entity, fileNumber)
         }
     }
 
@@ -139,7 +171,7 @@ class EntityFilesManager<T : IdentifiedDto>(
             }
             return@reserveWhileDo fileNumberAndEntityIds.entries
                 .flatMap { (fileNumber, ids) ->
-                    entityFiles.readEntities(ids, fileNumber)
+                    entityChambers.readEntities(ids, fileNumber)
                 }
         }
     }
@@ -152,7 +184,7 @@ class EntityFilesManager<T : IdentifiedDto>(
             }
             // Remove from disk
             val fileStatuses = fileNumberAndEntityIds.entries.mapNotNull { (fileNumber, ids) ->
-                entityFiles.removeEntities(ids, fileNumber)
+                entityChambers.removeEntities(ids, fileNumber)
             }
             // Update id map
             existingIds.forEach {
@@ -174,14 +206,14 @@ class EntityFilesManager<T : IdentifiedDto>(
     }
 
     override fun estimateOccupancy(): Double {
-        val entityFileOccupancy = entityFiles.estimateOccupancy()
+        val entityFileOccupancy = entityChambers.estimateOccupancy()
         val idOccupancy = idMap.estimateOccupancy()
         val incompleteOccupancy = incompleteFileMap.estimateOccupancy()
         return (entityFileOccupancy + idOccupancy + incompleteOccupancy) / 3
     }
 
     override fun reduceSize() {
-        entityFiles.reduceSize()
+        entityChambers.reduceSize()
     }
 
     override fun markAsBusy() {
@@ -193,12 +225,12 @@ class EntityFilesManager<T : IdentifiedDto>(
     }
 }
 
-class EntityFiles<T : IdentifiedDto>(
+class EntityChambers<T : IdentifiedDto>(
     subdirName: String,
     storageDirPath: Path,
     private val entityClass: Class<T>,
 ) : MemoryManageable() {
-    private val entitiesDirPath = storageDirPath.resolve(subdirName)
+    private val chambersDirPath = storageDirPath.resolve(subdirName)
     private val ENTITIES_FILENAME_TEMPLATE = "entities-%s.txt"
     private val RECORD_ID_ENTITY_SEPARATOR = ">>>>>>"
     private val ENTITY_RECORD_SEPARATOR = "\n:::::%#%&@$::::::\n"
@@ -259,7 +291,7 @@ class EntityFiles<T : IdentifiedDto>(
      */
     override fun reduceSize() {
         reserveWhileDo {
-            val allFilePaths = filesInTheDir(entitiesDirPath)
+            val allFilePaths = filesInTheDir(chambersDirPath)
             for (path in allFilePaths) {
                 val allRecords = getAllRecordsFromFile(path)
                 val optimisedRecords = foldRecords(allRecords).values
@@ -277,7 +309,7 @@ class EntityFiles<T : IdentifiedDto>(
         return reserveWhileDo {
             var allRecordsCount = 0
             var foldedRecordsCount = 0
-            filesInTheDir(entitiesDirPath).forEach {
+            filesInTheDir(chambersDirPath).forEach {
                 val allRecords = getAllRecordsFromFile(it)
                 allRecordsCount += allRecords.size
                 foldedRecordsCount += foldRecords(allRecords).size
@@ -385,7 +417,7 @@ class EntityFiles<T : IdentifiedDto>(
 
     private fun Int.toEntityFilePath(): Path {
         val entityFilename = ENTITIES_FILENAME_TEMPLATE.format(this)
-        return entitiesDirPath.resolve(entityFilename)
+        return chambersDirPath.resolve(entityFilename)
     }
 
     private fun Path.toFileNumber(): Int {
@@ -396,7 +428,7 @@ class EntityFiles<T : IdentifiedDto>(
     }
 
     private fun seekNewFileNumber(): Int {
-        val fileNames = filesInTheDir(entitiesDirPath)
+        val fileNames = filesInTheDir(chambersDirPath)
         val usedNumbers: List<Int> = fileNames
             .map { it.toFileNumber() }
             .sorted()

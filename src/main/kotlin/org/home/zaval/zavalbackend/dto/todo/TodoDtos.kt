@@ -1,7 +1,22 @@
 package org.home.zaval.zavalbackend.dto.todo
 
 import org.home.zaval.zavalbackend.dto.IdentifiedDto
+import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
+import org.home.zaval.zavalbackend.util.asUtc
+import java.time.OffsetDateTime
+import javax.persistence.*
+
+class TodoDto(
+    id: Long = -10000,
+    var name: String,
+    var description: String,
+    var status: TodoStatus,
+    var priority: Int = 0,
+    var createdOn: OffsetDateTime = OffsetDateTime.now().asUtc,
+    var interactedOn: OffsetDateTime = OffsetDateTime.now().asUtc,
+    var parentId: Long?,
+): IdentifiedDto(id)
 
 data class MoveTodoDto(
     val todoId: Long,

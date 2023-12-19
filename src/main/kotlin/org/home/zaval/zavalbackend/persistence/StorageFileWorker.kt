@@ -14,8 +14,11 @@ import kotlin.io.path.fileSize
  */
 object StorageFileWorker {
 
+    val globalStoragePath: Path
+        get() = Paths.get(ApplicationConfigStore.config.storageDirectory)
+
     fun resolveRelative(relativeFilePath: Path): Path {
-        return Paths.get(ApplicationConfigStore.config.storageDirectory).resolve(relativeFilePath)
+        return globalStoragePath.resolve(relativeFilePath)
     }
 
     private fun ensureFile(filename: Path): Path {
