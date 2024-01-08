@@ -20,20 +20,15 @@ class ArticleController(
         return ResponseEntity.ok(articleService.createArticle(title))
     }
 
-    @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllArticleLights(): ResponseEntity<List<ArticleLightDto>> {
-        return ResponseEntity.ok(articleService.getAllArticleLights())
-    }
-
     @PostMapping("by-id", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getArticleLightsById(@RequestBody articleIdsMap: Map<String, List<Long>>): ResponseEntity<List<ArticleLightDto>> {
         val articleIds = articleIdsMap["articleIds"] ?: emptyList()
-        return ResponseEntity.ok(articleService.getArticleLightsById(articleIds))
+        return ResponseEntity.ok(articleService.getArticleLightsByIds(articleIds))
     }
 
     @GetMapping("/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getArticleLight(@PathVariable("id") articleId: String): ResponseEntity<ArticleLightDto?> {
-        return ResponseEntity.ok(articleService.getArticleLight(articleId.toLong()))
+        return ResponseEntity.ok(articleService.getArticleLightById(articleId.toLong()))
     }
 
     @PostMapping("/with-labels", produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -43,7 +38,7 @@ class ArticleController(
     }
 
     @GetMapping("/with-label-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun findAllArticlesWithLabelNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<ArticleLightWithLabelsDto>> {
+    fun findAllArticlesWithLabelNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<ArticleWithLabelsDto>> {
         val decodedFragment = URLDecoder.decode(nameFragment, StandardCharsets.UTF_8)
         return ResponseEntity.ok(articleService.findAllArticlesWithLabelNameFragment(decodedFragment))
     }
@@ -89,11 +84,6 @@ class ArticleController(
         return ResponseEntity.ok(articleService.createArticleLabel(articleLabelDto))
     }
 
-    @GetMapping("/label", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllArticleLabels(): ResponseEntity<List<ArticleLabelDto>> {
-        return ResponseEntity.ok(articleService.getAllArticleLabels())
-    }
-
     @GetMapping("/label/with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun findAllArticleLabelsWithNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<ArticleLabelDto>> {
         val decodedFragment = URLDecoder.decode(nameFragment, StandardCharsets.UTF_8)
@@ -112,9 +102,10 @@ class ArticleController(
     )
     fun updateArticleLabel(
         @PathVariable("id") articleLabelId: String,
-        @RequestBody updateArticleLabelDto: UpdateArticleLabelDto
+        @RequestBody newNameMap: Map<String, String>
     ): ResponseEntity<Unit> {
-        articleService.updateArticleLabel(articleLabelId.toLong(), updateArticleLabelDto)
+        val name = newNameMap["name"]
+        articleService.updateArticleLabel(articleLabelId.toLong(), name)
         return ResponseEntity.ok(null)
     }
 
@@ -151,49 +142,12 @@ class ArticleController(
     }
 
     @PostMapping(
-        "/label/combination",
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun createLabelsCombination(@RequestBody labelIdsMap: Map<String, List<Long>>): ResponseEntity<LabelsCombinationDto> {
-        val labelIds = labelIdsMap["labelIds"]!!
-        return ResponseEntity.ok(articleService.createLabelsCombination(labelIds))
-    }
-
-    @GetMapping("/label/combination/popular", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTheMostPopularLabelsCombinations(@RequestParam("number") number: String?): ResponseEntity<List<FilledLabelsCombinationDto>> {
-        return ResponseEntity.ok(articleService.getTheMostPopularLabelsCombinations(number?.toInt()))
-    }
-
-    @PatchMapping(
-        "/label/combination/{id}",
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun updateLabelsCombinationPopularity(
-        @PathVariable("id") combinationId: String,
-        @RequestBody popularityMap: Map<String, String>
-    ): ResponseEntity<Unit> {
-        val popularity = popularityMap["popularity"]!!
-        articleService.updateLabelsCombinationPopularity(
-            combinationId = combinationId.toLong(),
-            popularity = popularity.toLong()
-        )
-        return ResponseEntity.ok(null)
-    }
-
-    @DeleteMapping("/label/combination/{id}")
-    fun deleteLabelsCombination(@PathVariable("id") combinationId: String): ResponseEntity<Unit> {
-        articleService.deleteLabelsCombination(combinationId.toLong())
-        return ResponseEntity.ok(null)
-    }
-
-    @PostMapping(
         "/series",
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    fun createArticleSeries(@RequestBody articleSeriesDto: ArticleSeriesDto): ResponseEntity<ArticleSeriesDto> {
-        return ResponseEntity.ok(articleService.createArticleSeries(articleSeriesDto))
+    fun createArticleSeries(@RequestBody createSeriesDto: CreateArticleSeriesDto): ResponseEntity<ArticleSeriesDto> {
+        return ResponseEntity.ok(articleService.createArticleSeries(createSeriesDto))
     }
 
     @GetMapping("/series/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
@@ -201,21 +155,16 @@ class ArticleController(
         return ResponseEntity.ok(articleService.getArticleSeries(number?.toLong()))
     }
 
-    @GetMapping("/series/{id}/content", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getArticleSeriesContent(@PathVariable("id") id: String?): ResponseEntity<List<ArticleSeriesContent>> {
-        return ResponseEntity.ok(articleService.getArticleSeriesContent(id?.toLong()))
-    }
-
     @GetMapping("/series/with-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun findAllArticleSeriesWithFragment(@RequestParam("fragment") fragment: String): ResponseEntity<List<ArticleSeriesDto>> {
+    fun findAllArticleSeriesWithTitleFragment(@RequestParam("fragment") fragment: String): ResponseEntity<List<ArticleSeriesDto>> {
         val decodedFragment = URLDecoder.decode(fragment, StandardCharsets.UTF_8)
-        return ResponseEntity.ok(articleService.findAllArticleSeriesWithFragment(decodedFragment))
+        return ResponseEntity.ok(articleService.findAllArticleSeriesWithTitleFragment(decodedFragment))
     }
 
     @PostMapping("/series/with-labels", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun findAllArticleSeriesWithAllLabels(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<List<ArticleSeriesDto>> {
+    fun findAllArticleSeriesWithAllLabels(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<List<SeriesWithLabelsDto>> {
         val labelIds = paramsBody["labelIds"]!!
-        return ResponseEntity.ok(articleService.findAllArticleSeriesWithAllLabels(labelIds))
+        return ResponseEntity.ok(articleService.findAllSeriesWithAllLabels(labelIds))
     }
 
     @GetMapping("/series/recent", produces = [MediaType.APPLICATION_JSON_VALUE])

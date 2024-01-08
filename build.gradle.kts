@@ -35,6 +35,7 @@ dependencies {
     } else {
         implementation("org.apache.derby:derby")
     }
+    runtimeOnly("org.flywaydb:flyway-core")
 
     // region Kotlin specifics
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
