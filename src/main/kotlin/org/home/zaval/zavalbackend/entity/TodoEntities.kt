@@ -22,11 +22,3 @@ class Todo(
     @JoinColumn(name = "PARENT_ID")
     var parentId: Long?,
 )
-
-@Entity
-@Table(name = "TODO_HISTORIES")
-class TodoHistory(
-    @Id
-    var id: Long? = null,
-    var records: String,
-)

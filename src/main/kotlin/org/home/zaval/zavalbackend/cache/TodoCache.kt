@@ -37,7 +37,7 @@ class TodoFamilyRelationsCache {
     fun adjust(childPlusParentIds: List<TodoIdsDto>) {
         childPlusParentIds.forEach { dto ->
             val prevParentId = childToParentId[dto.id]
-            val newParentId = dto.id
+            val newParentId = dto.parentId
             if (newParentId != prevParentId) {
                 // if parent has changed remove previous relations
                 if (prevParentId != null) {

@@ -47,9 +47,11 @@ interface TodoRepository : PagingAndSortingRepository<Todo, Long> {
     @Query("select description from TODOS where id = :ID", nativeQuery = true)
     fun getDescription(@Param("ID") todoId: Long): String
 
+    @Modifying
     @Query("UPDATE TODOS SET status = :status WHERE id = :id", nativeQuery = true)
-    fun updateStatus(id: Long, status: TodoStatus)
+    fun updateStatus(id: Long, status: String)
 
+    @Modifying
     @Query("UPDATE TODOS SET parent_id = :parentId WHERE id = :id", nativeQuery = true)
     fun updateParent(@Param("id") id: Long, @Param("parentId") parentId: Long?)
 
@@ -60,16 +62,4 @@ interface TodoRepository : PagingAndSortingRepository<Todo, Long> {
     @Modifying
     @Query("UPDATE TODOS SET description = :description WHERE id = :id", nativeQuery = true)
     fun updateDescription(id: Long, description: String)
-}
-
-@Repository
-interface TodoHistoryRepository : CrudRepository<TodoHistory, Long> {
-
-    @Modifying
-    @Query("UPDATE TODO_HISTORIES SET records = :records WHERE id = :id", nativeQuery = true)
-    fun updateRecords(@Param("id") id: Long, @Param("records") records: String)
-
-    @Modifying
-    @Query("delete from TodoHistory th where th.id in :IDS")
-    fun deleteAllForIds(@Param("IDS") todoIds: Collection<Long>)
 }

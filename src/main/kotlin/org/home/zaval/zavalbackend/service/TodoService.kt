@@ -2,13 +2,12 @@ package org.home.zaval.zavalbackend.service
 
 import org.home.zaval.zavalbackend.dto.todo.*
 import org.home.zaval.zavalbackend.entity.Todo
-import org.home.zaval.zavalbackend.entity.TodoHistory
 import org.home.zaval.zavalbackend.entity.projection.TodoLightProjection
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.exception.CircularTodoDependencyException
 import org.home.zaval.zavalbackend.repository.TodoComplexRepository
-import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
-import org.home.zaval.zavalbackend.util.*
+import org.home.zaval.zavalbackend.util.asUtc
+import org.home.zaval.zavalbackend.util.extractPrioritizedTodosList
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.data.domain.PageRequest
@@ -16,13 +15,11 @@ import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
-import java.util.*
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 class TodoService(
     val complexRepo: TodoComplexRepository,
-    val todoHistoryRepository: TodoHistoryRepository,
 ) {
 
     @Transactional
@@ -117,13 +114,14 @@ class TodoService(
         val neededAllLevelParentTodoIds = childrenLights.flatMap {
             complexRepo.getOrderedParentIdsOf(it.getId())
         }
-        val resultTodos = if (neededAllLevelParentTodoIds.isNotEmpty()) {
-            childrenLights + complexRepo
-                .repository
-                .getAllTodoLightsByIds(neededAllLevelParentTodoIds)
-        } else {
-            emptyList()
-        }
+        val resultTodos = childrenLights + (neededAllLevelParentTodoIds
+            .takeIf { it.isNotEmpty() }
+            ?.let {
+                complexRepo
+                    .repository
+                    .getAllTodoLightsByIds(neededAllLevelParentTodoIds)
+            }
+            ?: emptyList())
         return extractPrioritizedTodosList(resultTodos)
     }
 
@@ -176,36 +174,7 @@ class TodoService(
 
     @Transactional
     fun deleteTodo(todoId: Long) {
-        val allDeletedIds = complexRepo.deleteById(todoId)
-        todoHistoryRepository.deleteAllForIds(allDeletedIds)
-    }
-
-    fun getTodoHistory(todoId: Long?): TodoHistoryDto? {
-        return todoId?.let { id ->
-            todoHistoryRepository.findById(id).map { it.toDto() }.orElse(null)
-        }
-    }
-
-    fun updateTodoHistory(todoId: Long, todoHistoryDto: TodoHistoryDto) {
-        // try to update
-        if (todoHistoryRepository.existsById(todoId)) {
-            // try to update or delete
-            if (todoHistoryDto.records.isNotEmpty()) {
-                todoHistoryRepository.updateRecords(todoId, mergeHistoryRecords(todoHistoryDto.records))
-            } else {
-                todoHistoryRepository.deleteById(todoId)
-            }
-        } else {
-            // try to create
-            val owningTodoExists = complexRepo.repository.existsById(todoId)
-            if (owningTodoExists) {
-                val newTodoHistory = TodoHistory(
-                    id = todoId,
-                    records = mergeHistoryRecords(todoHistoryDto.records),
-                )
-                todoHistoryRepository.save(newTodoHistory)
-            }
-        }
+        complexRepo.deleteById(todoId)
     }
 
     private fun updateInteractedOn(id: Long): OffsetDateTime {
@@ -219,10 +188,13 @@ class TodoService(
             .getOrderedParentIdsOf(id)
             .asReversed()
         for (parentId in reversedAllOrderedParentIds) {
+            val parent = complexRepo.repository.findById(parentId).orElse(null)
+                ?: continue
             val children = complexRepo.repository.getAllChildrenOf(parentId)
-            val hasHigherPriority = children.find { it.status > newStatus } != null
-            if (!hasHigherPriority) {
-                complexRepo.repository.updateStatus(parentId, newStatus)
+            val theHighestStatus = children.find { it.status > newStatus }?.status
+                ?: newStatus
+            if (parent.status < theHighestStatus) {
+                complexRepo.repository.updateStatus(parentId, theHighestStatus.name)
             }
         }
     }

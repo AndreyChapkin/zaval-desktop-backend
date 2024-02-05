@@ -2,7 +2,6 @@ package org.home.zaval.zavalbackend.dto.todo
 
 import org.home.zaval.zavalbackend.dto.IdentifiedDto
 import org.home.zaval.zavalbackend.entity.Todo
-import org.home.zaval.zavalbackend.entity.TodoHistory
 import org.home.zaval.zavalbackend.entity.projection.TodoIdsProjection
 import org.home.zaval.zavalbackend.entity.projection.TodoLightProjection
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
@@ -97,6 +96,7 @@ data class TodoMoveDto(
 data class TodoCreateDto(
     val name: String,
     val status: TodoStatus,
+    val priority: Int,
     val parentId: Long? = null,
 )
 
@@ -104,6 +104,7 @@ fun TodoCreateDto.toEntity() = Todo(
     id = null,
     name = this.name,
     status = this.status,
+    priority = this.priority,
     parentId = this.parentId
 )
 
@@ -117,16 +118,3 @@ class TodoUpdateGeneralDto(
     val status: TodoStatus,
     val priority: Int,
 )
-
-class TodoHistoryDto(val todoId: Long, val records: List<String>)
-
-fun TodoHistory.toDto() = TodoHistoryDto(
-    todoId = this.id!!,
-    records = splitHistoryRecords(this.records)
-)
-
-const val TODO_HISTORY_DELIMITER = "<;>"
-
-fun splitHistoryRecords(records: String) = records.split(TODO_HISTORY_DELIMITER)
-
-fun mergeHistoryRecords(records: List<String>) = records.joinToString(TODO_HISTORY_DELIMITER)
