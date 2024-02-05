@@ -83,22 +83,4 @@ class TodoController(
         todoService.moveTodo(todo)
         return ResponseEntity.ok(null)
     }
-
-    @GetMapping("/{id}/history", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTodoHistory(@PathVariable("id") todoId: String): ResponseEntity<TodoHistoryDto?> {
-        return ResponseEntity.ok(todoService.getTodoHistory(todoId.toLong()))
-    }
-
-    @PatchMapping(
-        "/{id}/history",
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun updateTodoHistory(
-        @PathVariable("id") todoId: String,
-        @RequestBody todoHistoryDto: TodoHistoryDto
-    ): ResponseEntity<Unit> {
-        todoService.updateTodoHistory(todoId.toLong(), todoHistoryDto)
-        return ResponseEntity.ok(null)
-    }
 }
