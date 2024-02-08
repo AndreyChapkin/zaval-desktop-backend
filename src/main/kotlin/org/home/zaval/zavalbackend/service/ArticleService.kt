@@ -48,6 +48,7 @@ class ArticleService(
         return articleLights.map { it.toDto() }
     }
 
+    @Transactional
     fun getArticleContent(id: Long?): ArticleContentDto? {
         val content = id?.let { articleRepository.getArticleContentById(it) }
             ?: return null

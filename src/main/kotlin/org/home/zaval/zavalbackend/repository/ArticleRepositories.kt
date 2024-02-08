@@ -4,6 +4,7 @@ import org.home.zaval.zavalbackend.entity.Article
 import org.home.zaval.zavalbackend.entity.projection.ArticleLightProjection
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.PagingAndSortingRepository
 import org.springframework.data.repository.query.Param
@@ -35,6 +36,7 @@ interface ArticleRepository : PagingAndSortingRepository<Article, Long> {
     @Query("select content from Article where id = :id")
     fun getArticleContentById(@Param("id") id: Long): String?
 
-    @Query("UPDATE Article SET interactedOn = :interactedOn WHERE id = :id")
+    @Modifying
+    @Query("UPDATE ARTICLES SET interacted_on = :interactedOn WHERE id = :id", nativeQuery = true)
     fun updateInteractedOn(@Param("id") id: Long, @Param("interactedOn") interactedOn: OffsetDateTime)
 }
