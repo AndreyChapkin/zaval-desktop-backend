@@ -1,5 +1,4 @@
 {
-  "storageDirectory": "C:\\Temp\\zaval-app-test\\zaval-data",
-  "saveArchivesToDirectory": "C:\\Temp\\zaval-app-test\\zaval-data-archives",
-  "maxArchivesNumber": 3
+  "databasePath": "C:\\Program_Files\\PostgreSQL\\16",
+  "storageDirectoryPath": "C:\\Temp\\zaval-app-test"
 }

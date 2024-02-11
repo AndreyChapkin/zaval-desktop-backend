@@ -8,6 +8,7 @@ services:
       POSTGRES_DB: zaval_backend_test
       POSTGRES_USER: zaval_backend
       POSTGRES_PASSWORD: 1
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
     image: "postgres:15.1-alpine"
     deploy:
       resources:

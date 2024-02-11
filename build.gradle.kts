@@ -30,11 +30,7 @@ dependencies {
 
     // db
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    if (project.hasProperty("isLocal")) {
-        implementation("org.postgresql:postgresql:42.6.0")
-    } else {
-        implementation("org.apache.derby:derby")
-    }
+    implementation("org.postgresql:postgresql:42.6.0")
     runtimeOnly("org.flywaydb:flyway-core")
 
     // region Kotlin specifics
