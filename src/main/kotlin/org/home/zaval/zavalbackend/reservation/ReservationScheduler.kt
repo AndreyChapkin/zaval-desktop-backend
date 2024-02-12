@@ -3,13 +3,11 @@ package org.home.zaval.zavalbackend.reservation
 import org.home.zaval.zavalbackend.configuration.ApplicationConfig
 import org.home.zaval.zavalbackend.configuration.DatabaseProperties
 import org.home.zaval.zavalbackend.persistence.StorageFileHelper
-import org.springframework.context.annotation.Profile
 import org.springframework.context.annotation.Scope
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.lang.RuntimeException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -23,7 +21,6 @@ data class DumpFileDescriptor(
 
 @Component
 @Scope("singleton")
-@Profile("local")
 class ReservationScheduler(
     private val storageFileHelper: StorageFileHelper,
     applicationConfig: ApplicationConfig,
@@ -59,7 +56,7 @@ class ReservationScheduler(
     // dump file name = zaval_dump-1-active or zaval_dump-1
     final val DUMP_FILE_PREFIX = "zaval_dump-"
 
-    @Scheduled(fixedRate = 3, timeUnit = TimeUnit.HOURS)
+    @Scheduled(fixedRate = 1, timeUnit = TimeUnit.HOURS)
     fun reserve() {
         println("start database data reservation...")
         val activeFileDescriptor = newActiveFileDumpDescriptor()
