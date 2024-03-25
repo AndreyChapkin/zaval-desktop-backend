@@ -5,6 +5,7 @@ import org.home.zaval.zavalbackend.entity.Todo
 import org.home.zaval.zavalbackend.entity.projection.TodoLightProjection
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.exception.CircularTodoDependencyException
+import org.home.zaval.zavalbackend.persistence.ObsidianVaultHelper
 import org.home.zaval.zavalbackend.repository.TodoComplexRepository
 import org.home.zaval.zavalbackend.util.asUtc
 import org.home.zaval.zavalbackend.util.extractPrioritizedTodosList
@@ -14,13 +15,21 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.nio.file.Paths
 import java.time.OffsetDateTime
+import javax.servlet.http.HttpServletRequest
+import kotlin.io.path.name
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 class TodoService(
-    val complexRepo: TodoComplexRepository,
+    private val complexRepo: TodoComplexRepository,
+    private final val obsidianVaultHelper: ObsidianVaultHelper,
+    private val request: HttpServletRequest
 ) {
+
+    val OBSIDIAN_TODOS_DIRECTORY = "zaval-todos-info"
+    val obsidianVaultName = obsidianVaultHelper.obsidianVaultPath?.fileName?.name
 
     @Transactional
     fun createTodo(todoDto: TodoCreateDto): TodoLightDto {
@@ -197,5 +206,41 @@ class TodoService(
                 complexRepo.repository.updateStatus(parentId, theHighestStatus.name)
             }
         }
+    }
+
+    // open obsidian note for the task (create if it doesn't exist)
+    fun openObsidianNoteForTodo(todoId: Long, uiPageUrl: String) {
+        if (obsidianVaultName == null) {
+            return
+        }
+        if (!complexRepo.repository.existsById(todoId)) {
+            return
+        }
+        val notePath = Paths.get(OBSIDIAN_TODOS_DIRECTORY, "$todoId.md")
+        if (!obsidianVaultHelper.fileExists(notePath)) {
+            val initialContent = """
+                Initial name: ${getLightTodo(todoId)?.name}
+                Link: $uiPageUrl
+                
+                
+            """.trimIndent()
+            obsidianVaultHelper.writeToFile(initialContent, notePath)
+        }
+        // open note via system command
+        val process = ProcessBuilder("cmd.exe", "/c", "start", makeObsidianLinkFor(todoId))
+            .redirectErrorStream(true)
+            .start()
+        val exitCode = process.waitFor()
+        println("Obsidian process exited with code $exitCode")
+    }
+
+    private fun makeObsidianLinkFor(todoId: Long): String {
+        if (obsidianVaultName == null) {
+            return ""
+        }
+        // return obsidian://open?vault=Test%20Vault"&"file=zaval-todos-info/6
+        val encodedVaultName = obsidianVaultName!!.replace(" ", "%20")
+        val encodedFilename = "$OBSIDIAN_TODOS_DIRECTORY/$todoId".replace(" ", "%20")
+        return "obsidian://open?vault=$encodedVaultName\"&\"file=$encodedFilename"
     }
 }

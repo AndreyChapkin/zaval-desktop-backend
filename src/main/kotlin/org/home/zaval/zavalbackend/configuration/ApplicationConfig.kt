@@ -7,10 +7,12 @@ import java.lang.RuntimeException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import kotlin.io.path.name
 
 class ApplicationConfig(
     val databasePath: Path,
     val storageDirectoryPath: Path,
+    val obsidianVaultPath: Path? = null,
 )
 
 const val CONFIG_FILE_PATH = "./config.json"
@@ -37,9 +39,30 @@ class ApplicationConfiguration {
             Paths.get(it)
         }
             ?: Paths.get(DEFAULT_STORAGE_DIRECTORY_PATH)
+        val obsidianVaultPath = rawAppConfig[ApplicationConfig::obsidianVaultPath.name].also {
+            // check if the vault path is present and exists
+            var vaultDirIsIncorrect = it == null || Files.notExists(Paths.get(it)) || !Files.isDirectory(Paths.get(it))
+            if (!vaultDirIsIncorrect) {
+                Files.newDirectoryStream(Paths.get(it!!)).use { stream ->
+                    stream.forEach { path ->
+                        if (path.name === ".obsidian") {
+                            vaultDirIsIncorrect = false
+                            return@use
+                        }
+                    }
+                }
+            }
+            if (vaultDirIsIncorrect) {
+                println("Obsidian vault path does not exist or incorrect.\n!!!Obsidian integration will be disabled")
+            }
+        }?.let {
+            println("Obsidian vault path detected.\nObsidian integration is enabled")
+            Paths.get(it)
+        }
         return ApplicationConfig(
             databasePath = databasePath,
             storageDirectoryPath = storageDirectoryPath,
+            obsidianVaultPath = obsidianVaultPath
         )
     }
 }

@@ -7,7 +7,6 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardOpenOption
 import kotlin.io.path.fileSize
-import kotlin.io.path.name
 
 inline fun <reified T> readObjectFromAbsoluteFilePath(absolutePath: String): T? {
     val filePath = Paths.get(absolutePath)
@@ -17,24 +16,16 @@ inline fun <reified T> readObjectFromAbsoluteFilePath(absolutePath: String): T? 
     return deserializeObject((Files.readString(filePath)))
 }
 
-/**
- * By default, object works with files in storage directory.
- * Use absolute methods to work with absolute files.
- */
-@Component
-class StorageFileHelper(applicationConfig: ApplicationConfig) {
-
-    private val globalStoragePath: Path = applicationConfig.storageDirectoryPath
-
+class DirectoryHelper(private val rootDirPath: Path) {
     fun resolveRelative(relativeFilePath: Path): Path {
-        return globalStoragePath.resolve(relativeFilePath)
+        return rootDirPath.resolve(relativeFilePath)
     }
 
     fun toAbsolute(relativeFilePath: Path): Path {
         return resolveRelative(relativeFilePath).toAbsolutePath()
     }
 
-    private fun ensureFile(filename: Path): Path {
+    fun ensureFile(filename: Path): Path {
         var existingFilePath = resolveRelative(filename)
         if (!Files.exists(existingFilePath)) {
             Files.createDirectories(existingFilePath.parent)
@@ -113,5 +104,157 @@ class StorageFileHelper(applicationConfig: ApplicationConfig) {
     fun removeFile(filename: Path) {
         val filePath = resolveRelative(filename)
         Files.deleteIfExists(filePath)
+    }
+}
+
+/**
+ * By default, object works with files in storage directory.
+ * Use absolute methods to work with absolute files.
+ */
+@Component
+class StorageFileHelper(applicationConfig: ApplicationConfig) {
+
+    private val globalStoragePath: Path = applicationConfig.storageDirectoryPath
+    private val directoryHelper = DirectoryHelper(globalStoragePath)
+
+    fun resolveRelative(relativeFilePath: Path): Path {
+        return directoryHelper.resolveRelative(relativeFilePath)
+    }
+
+    fun toAbsolute(relativeFilePath: Path): Path {
+        return directoryHelper.toAbsolute(relativeFilePath)
+    }
+
+    fun ensureFile(filename: Path): Path {
+        return directoryHelper.ensureFile(filename)
+    }
+
+    fun appendToFile(data: String, filename: Path) {
+        directoryHelper.appendToFile(data, filename)
+    }
+
+    fun writeObjectToFile(obj: Any, filename: Path) {
+        directoryHelper.writeObjectToFile(obj, filename)
+    }
+
+    fun renameFile(oldFilename: Path, newFilename: Path) {
+        directoryHelper.renameFile(oldFilename, newFilename)
+    }
+
+    fun writeToFile(data: String, filename: Path) {
+        directoryHelper.writeToFile(data, filename)
+    }
+
+    fun fileExists(filename: Path): Boolean {
+        return directoryHelper.fileExists(filename)
+    }
+
+    fun checkFileSizeInBytes(relativeFilePath: Path): Long {
+        return directoryHelper.checkFileSizeInBytes(relativeFilePath)
+    }
+
+    fun allFilenamesInDir(dir: Path): List<Path> {
+        return directoryHelper.allFilenamesInDir(dir)
+    }
+
+    fun <T> readObjectFromFile(filename: Path, objClass: Class<T>): T? {
+        return directoryHelper.readObjectFromFile(filename, objClass)
+    }
+
+    fun readFile(filename: Path): String? {
+        return directoryHelper.readFile(filename)
+    }
+
+    fun readAllLinesFromFile(filename: Path): List<String>? {
+        return directoryHelper.readAllLinesFromFile(filename)
+    }
+
+    fun removeFile(filename: Path) {
+        directoryHelper.removeFile(filename)
+    }
+}
+
+/**
+ * By default, object works with files in storage directory.
+ * Use absolute methods to work with absolute files.
+ */
+@Component
+class ObsidianVaultHelper(applicationConfig: ApplicationConfig) {
+
+    final val obsidianVaultPath: Path? = applicationConfig.obsidianVaultPath
+    private val directoryHelper = obsidianVaultPath?.let { DirectoryHelper(it) }
+
+    private fun throwVaultNotConfigured(): Nothing {
+        throw RuntimeException("Obsidian vault is not configured")
+    }
+
+    fun resolveRelative(relativeFilePath: Path): Path {
+        return directoryHelper?.resolveRelative(relativeFilePath)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun toAbsolute(relativeFilePath: Path): Path {
+        return directoryHelper?.toAbsolute(relativeFilePath)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun ensureFile(filename: Path): Path {
+        return directoryHelper?.ensureFile(filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun appendToFile(data: String, filename: Path) {
+        directoryHelper?.appendToFile(data, filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun writeObjectToFile(obj: Any, filename: Path) {
+        directoryHelper?.writeObjectToFile(obj, filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun renameFile(oldFilename: Path, newFilename: Path) {
+        directoryHelper?.renameFile(oldFilename, newFilename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun writeToFile(data: String, filename: Path) {
+        directoryHelper?.writeToFile(data, filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun fileExists(filename: Path): Boolean {
+        return directoryHelper?.fileExists(filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun checkFileSizeInBytes(relativeFilePath: Path): Long {
+        return directoryHelper?.checkFileSizeInBytes(relativeFilePath)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun allFilenamesInDir(dir: Path): List<Path> {
+        return directoryHelper?.allFilenamesInDir(dir)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun <T> readObjectFromFile(filename: Path, objClass: Class<T>): T? {
+        return directoryHelper?.readObjectFromFile(filename, objClass)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun readFile(filename: Path): String? {
+        return directoryHelper?.readFile(filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun readAllLinesFromFile(filename: Path): List<String>? {
+        return directoryHelper?.readAllLinesFromFile(filename)
+            ?: throwVaultNotConfigured()
+    }
+
+    fun removeFile(filename: Path) {
+        directoryHelper?.removeFile(filename)
+            ?: throwVaultNotConfigured()
     }
 }

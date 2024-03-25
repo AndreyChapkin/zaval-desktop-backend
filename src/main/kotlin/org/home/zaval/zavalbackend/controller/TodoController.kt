@@ -83,4 +83,12 @@ class TodoController(
         todoService.moveTodo(todo)
         return ResponseEntity.ok(null)
     }
+
+    // open obsidian note for the task (create if it doesn't exist)
+    @PostMapping("/{id}/obsidian-note")
+    fun openObsidianNoteForTodo(@PathVariable("id") todoId: String, @RequestBody params: Map<String, String>): ResponseEntity<Unit> {
+        val uiPageUrl = params["uiPageUrl"]
+        todoService.openObsidianNoteForTodo(todoId.toLong(), uiPageUrl ?: "no-url")
+        return ResponseEntity.ok(null)
+    }
 }
