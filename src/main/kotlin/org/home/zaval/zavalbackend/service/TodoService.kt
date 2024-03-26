@@ -220,7 +220,7 @@ class TodoService(
         if (!obsidianVaultHelper.fileExists(notePath)) {
             val initialContent = """
                 Initial name: ${getLightTodo(todoId)?.name}
-                Link: $uiPageUrl
+                Link: [$uiPageUrl]($uiPageUrl)
                 
                 
             """.trimIndent()
