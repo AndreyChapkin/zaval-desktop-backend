@@ -1,15 +1,11 @@
 spring:
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
   datasource:
-    url: jdbc:postgresql://localhost:5432/zaval-desktop
-    username: zaval-desktop
-    password: zaval-desktop
+    url: jdbc:postgresql://localhost:5433/zaval_backend_test
+    username: zaval_backend
+    password: 1
     driver-class-name: org.postgresql.Driver
   properties:
     hibernate:
-      default_schema: zaval_desktop
       dialect: org.hibernate.dialect.PostgreSQLDialect
 
 logging:

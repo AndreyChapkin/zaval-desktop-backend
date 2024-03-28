@@ -16,17 +16,20 @@ class TodoController(
     val todoService: TodoService
 ) {
     @PostMapping(consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun createTodo(@RequestBody createTodoDto: CreateTodoDto): ResponseEntity<LightTodoDto> {
+    fun createTodo(@RequestBody createTodoDto: TodoCreateDto): ResponseEntity<TodoLightDto> {
         return ResponseEntity.ok(todoService.createTodo(createTodoDto))
     }
 
     @GetMapping("/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getLightTodo(@PathVariable("id") todoId: String): ResponseEntity<LightTodoDto?> {
+    fun getLightTodo(@PathVariable("id") todoId: String): ResponseEntity<TodoLightDto?> {
         return ResponseEntity.ok(todoService.getLightTodo(todoId.toLong()))
     }
 
     @PatchMapping("/{id}", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun updateTodo(@PathVariable("id") todoId: String, @RequestBody updateTodoDto: UpdateTodoDto): ResponseEntity<LightTodoDto> {
+    fun updateTodo(
+        @PathVariable("id") todoId: String,
+        @RequestBody updateTodoDto: TodoUpdateDto
+    ): ResponseEntity<TodoLightDto> {
         return ResponseEntity.ok(todoService.updateTodo(todoId.toLong(), updateTodoDto))
     }
 
@@ -36,74 +39,56 @@ class TodoController(
         return ResponseEntity.ok(null)
     }
 
-    @DeleteMapping("/outdated")
-    fun deleteOutdatedTodos(): ResponseEntity<Unit> {
-        todoService.deleteAllOutdatedTodos()
-        return ResponseEntity.ok(null)
-    }
-
     @GetMapping("/recent", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTheMostDatedLightTodos(@RequestParam("count") count: String?, @RequestParam("orderType") orderType: String?): ResponseEntity<List<LightTodoDto>> {
-        return ResponseEntity.ok(todoService.getTheMostDatedLightTodos(count?.toInt(), orderType))
-    }
-
-    @GetMapping(produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getAllTodos(@RequestParam("status", required = false) status: TodoStatus?): ResponseEntity<List<LightTodoDto>> {
-        return ResponseEntity.ok(todoService.getAllTodos(status))
+    fun getTheMostDatedLightTodos(
+        @RequestParam("count") count: String?,
+        @RequestParam("orderType") orderType: String?
+    ): ResponseEntity<List<TodoLightDto>> {
+        return ResponseEntity.ok(todoService.getTheMostDatedTodoLights(count?.toInt(), orderType))
     }
 
     @GetMapping("/with-name-fragment", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun findAllTodosByNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<LightTodoDto>> {
+    fun findAllTodosWithNameFragment(@RequestParam("name-fragment") nameFragment: String): ResponseEntity<List<TodoLightDto>> {
         val decodedFragment = URLDecoder.decode(nameFragment, StandardCharsets.UTF_8)
-        return ResponseEntity.ok(todoService.findAllShallowTodosByNameFragment(decodedFragment))
+        return ResponseEntity.ok(todoService.findAllTodoLightsWithNameFragment(decodedFragment))
     }
 
-    @PostMapping("/prioritized-list", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getPrioritizedListOfTodos(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<TodosListDto> {
+    @PostMapping(
+        "/prioritized-list",
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun getPrioritizedListOfTodos(@RequestBody paramsBody: Map<String, List<Long>>): ResponseEntity<TodoLeavesAndBranchesDto> {
         val todoIds = paramsBody["todoIds"] ?: emptyList()
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodos(todoIds))
     }
 
     @GetMapping("/prioritized-list/{status}", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getPrioritizedListOfTodosWithStatus(@PathVariable("status") status: TodoStatus): ResponseEntity<TodosListDto> {
+    fun getPrioritizedListOfTodosWithStatus(@PathVariable("status") status: TodoStatus): ResponseEntity<TodoLeavesAndBranchesDto> {
         return ResponseEntity.ok(todoService.getPrioritizedListOfTodosWithStatus(status))
     }
 
     @GetMapping("/root", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getRootTodos(): ResponseEntity<List<LightTodoDto>> {
+    fun getRootTodos(): ResponseEntity<List<TodoLightDto>> {
         return ResponseEntity.ok(todoService.getRootTodos())
     }
 
-    @GetMapping("/detailed/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getDetailedTodo(@PathVariable("id", required = false) todoId: String?): ResponseEntity<DetailedTodoDto?> {
-        return ResponseEntity.ok(todoService.getDetailedTodo(todoId?.toLong()))
-    }
-
-    @GetMapping("/heavy-details/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getHeavyDetails(@PathVariable("id", required = false) todoId: String?): ResponseEntity<HeavyDetailsDto?> {
-        return ResponseEntity.ok(todoService.getHeavyDetails(todoId?.toLong()))
+    @GetMapping("/family/{id}", produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun getTodoFamily(@PathVariable("id", required = false) todoId: String?): ResponseEntity<TodoFamilyDto?> {
+        return ResponseEntity.ok(todoService.getTodoFamily(todoId?.toLong()))
     }
 
     @PatchMapping("/move", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun moveTodo(@RequestBody todo: MoveTodoDto): ResponseEntity<Unit> {
+    fun moveTodo(@RequestBody todo: TodoMoveDto): ResponseEntity<Unit> {
         todoService.moveTodo(todo)
         return ResponseEntity.ok(null)
     }
 
-    @GetMapping("/{id}/history", produces = [MediaType.APPLICATION_JSON_VALUE])
-    fun getTodoHistory(@PathVariable("id") todoId: String): ResponseEntity<TodoHistoryDto?> {
-        return ResponseEntity.ok(todoService.getTodoHistory(todoId.toLong()))
-    }
-
-    @PatchMapping(
-        "/{id}/history",
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun updateTodoHistory(
-        @PathVariable("id") todoId: String,
-        @RequestBody todoHistoryDto: TodoHistoryDto
-    ): ResponseEntity<TodoHistoryDto> {
-        return ResponseEntity.ok(todoService.updateTodoHistory(todoId.toLong(), todoHistoryDto))
+    // open obsidian note for the task (create if it doesn't exist)
+    @PostMapping("/{id}/obsidian-note")
+    fun openObsidianNoteForTodo(@PathVariable("id") todoId: String, @RequestBody params: Map<String, String>): ResponseEntity<Unit> {
+        val uiPageUrl = params["uiPageUrl"]
+        todoService.openObsidianNoteForTodo(todoId.toLong(), uiPageUrl ?: "no-url")
+        return ResponseEntity.ok(null)
     }
 }

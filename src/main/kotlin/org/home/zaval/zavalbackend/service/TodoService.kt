@@ -2,273 +2,245 @@ package org.home.zaval.zavalbackend.service
 
 import org.home.zaval.zavalbackend.dto.todo.*
 import org.home.zaval.zavalbackend.entity.Todo
-import org.home.zaval.zavalbackend.entity.TodoHistory
-import org.home.zaval.zavalbackend.entity.TodoLightView
+import org.home.zaval.zavalbackend.entity.projection.TodoLightProjection
 import org.home.zaval.zavalbackend.entity.value.TodoStatus
 import org.home.zaval.zavalbackend.exception.CircularTodoDependencyException
-import org.home.zaval.zavalbackend.repository.TodoHistoryRepository
-import org.home.zaval.zavalbackend.repository.TodoRepository
-import org.home.zaval.zavalbackend.store.TodoStore
-import org.home.zaval.zavalbackend.util.*
+import org.home.zaval.zavalbackend.persistence.ObsidianVaultHelper
+import org.home.zaval.zavalbackend.repository.TodoComplexRepository
+import org.home.zaval.zavalbackend.util.asUtc
+import org.home.zaval.zavalbackend.util.extractPrioritizedTodosList
 import org.springframework.beans.factory.config.ConfigurableBeanFactory
 import org.springframework.context.annotation.Scope
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.nio.file.Paths
 import java.time.OffsetDateTime
-import java.util.*
+import javax.servlet.http.HttpServletRequest
+import kotlin.io.path.name
 
 @Service
 @Scope(value = ConfigurableBeanFactory.SCOPE_SINGLETON)
 class TodoService(
-    val todoRepository: TodoRepository,
-    val todoHistoryRepository: TodoHistoryRepository,
+    private val complexRepo: TodoComplexRepository,
+    private final val obsidianVaultHelper: ObsidianVaultHelper,
+    private val request: HttpServletRequest
 ) {
 
+    val OBSIDIAN_TODOS_DIRECTORY = "zaval-todos-info"
+    val obsidianVaultName = obsidianVaultHelper.obsidianVaultPath?.fileName?.name
+
     @Transactional
-    fun createTodo(todoDto: CreateTodoDto): LightTodoDto {
-        val newTodo = todoDto.toEntity().apply {
-            id = TodoStore.getId()
+    fun createTodo(todoDto: TodoCreateDto): TodoLightDto {
+        val newTodo = todoDto.toEntity()
+        return complexRepo.save(newTodo).toDto()
+    }
+
+    fun getLightTodo(id: Long?): TodoLightDto? {
+        return id?.let {
+            complexRepo
+                .repository
+                .getAllTodoLightsByIds(listOf(id))
+                .takeIf { it.isNotEmpty() }
+                ?.first()
+                ?.toDto()
         }
-        val savedTodo = todoRepository.save(newTodo).toLightDto()
-        return savedTodo
     }
 
-    fun getLightTodo(todoId: Long?): LightTodoDto? {
-        return loadTodo(todoId)?.toLightDto()
+    fun getTodoDescription(id: Long?): String? {
+        return id?.let {
+            complexRepo
+                .repository
+                .getDescription(id)
+        }
     }
 
-    fun getTheMostDatedLightTodos(count: Int?, orderType: String?): List<LightTodoDto> {
+    fun getTheMostDatedTodoLights(count: Int?, orderType: String?): List<TodoLightDto> {
         val sortType = if (orderType == "recent") {
             Sort.by(Sort.Order.desc(Todo::interactedOn.name))
         } else {
             Sort.by(Sort.Order.asc(Todo::interactedOn.name))
         }
-        return todoRepository.findAll(
-            PageRequest.of(0, count ?: 10, sortType)
-        ).content.map { it.toLightDto() }
+        return complexRepo
+            .repository
+            .findAll(
+                PageRequest.of(0, count ?: 10, sortType)
+            ).content
+            .map { it.toDto() }
     }
 
-    @Transactional
-    fun getRootTodos(): List<LightTodoDto> {
-        return todoRepository.getAllTopTodos().map { it.toLightDto() }
+    fun getRootTodos(): List<TodoLightDto> {
+        return complexRepo
+            .repository
+            .getAllRootTodos()
+            .map { it.toDto() }
     }
 
     /**
-     * @return root <- ... parent <- todoElement -> children[]
+     * @return todoElement with ordered parents: root, parent 1, parent 2, ...
+     * and unordered children
      */
     @Transactional
-    fun getDetailedTodo(todoId: Long?): DetailedTodoDto? {
+    fun getTodoFamily(todoId: Long?): TodoFamilyDto? {
         if (todoId == null) {
             return null
         }
-        val todo: Todo = todoRepository.findById(todoId).orElse(null)
+        val todo: Todo = complexRepo
+            .repository.findById(todoId)
+            .orElse(null)
             ?: return null
         todo.interactedOn = OffsetDateTime.now().asUtc
-        todoRepository.save(todo)
-        val allParentIds = TodoStore.getAllOrderedParentIdsOf(todo.id!!)
-        val parentTodos = todoRepository.findAllById(allParentIds)
-        val orderedParentTodos = allParentIds.map { parentId ->
+        complexRepo.save(todo)
+        val orderedParentIds = complexRepo.getOrderedParentIdsOf(todo.id!!)
+        val parentTodos = complexRepo.repository.findAllById(orderedParentIds)
+        val orderedParentTodos = orderedParentIds.map { parentId ->
             parentTodos.find { it.id == parentId }!!
         }
-        val childrenTodos = todoRepository.getAllChildrenOf(todo.id!!)
-        return todo.toDetailedDto(
-            orderedParentTodos.map { it.toLightDto() },
-            childrenTodos.map { it.toLightDto() }
+        val childrenTodos = complexRepo.repository.getAllChildrenOf(todo.id!!)
+        return todo.toFamilyDto(
+            orderedParentTodos.map { it.toDto() },
+            childrenTodos.map { it.toDto() }
         )
     }
 
-    fun getHeavyDetails(todoId: Long?): HeavyDetailsDto? {
-        if (todoId == null) {
-            return null
-        }
-        val description = todoRepository.getDescription(todoId)
-        val history = todoHistoryRepository.findById(todoId).orElse(null)
-        return HeavyDetailsDto(
-            todoId = todoId,
-            description = description,
-            history = history?.toLightDto()
-        )
+    fun findAllTodoLightsWithNameFragment(nameFragment: String): List<TodoLightDto> {
+        return complexRepo.repository.findAllTodoLightsWithNameFragment("%$nameFragment%")
+            .map { it.toDto() }
     }
 
-    fun getAllTodos(status: TodoStatus?): List<LightTodoDto> {
-        return status
-            ?.let { todoRepository.getAllTodosWithStatus(it.name.uppercase()).map { it.toLightDto() } }
-            ?: todoRepository.getAllTodos().map { it.toLightDto() }
-    }
-
-    fun findAllShallowTodosByNameFragment(nameFragment: String): List<LightTodoDto> {
-        return todoRepository.findAllShallowTodosByNameFragment("%$nameFragment%")
-            .map { it.toLightDto() }
-    }
-
-    fun getPrioritizedListOfTodosWithStatus(status: TodoStatus): TodosListDto {
-        val allTodosWithStatus = todoRepository.getAllTodosWithStatus(status.name.uppercase())
+    fun getPrioritizedListOfTodosWithStatus(status: TodoStatus): TodoLeavesAndBranchesDto {
+        val allTodosWithStatus = complexRepo.repository.getAllTodosWithStatus(status.name.uppercase())
         return transformToLists(allTodosWithStatus)
     }
 
-    fun getPrioritizedListOfTodos(todoIds: List<Long>): TodosListDto {
-        val childrenLightViews = todoRepository.getAllShallowTodosByIds(todoIds)
+    fun getPrioritizedListOfTodos(todoIds: List<Long>): TodoLeavesAndBranchesDto {
+        val childrenLightViews = complexRepo.repository.getAllTodoLightsByIds(todoIds)
         return transformToLists(childrenLightViews)
     }
 
-    private fun transformToLists(childrenLightViews: List<TodoLightView>): TodosListDto {
-        val neededAllLevelParentTodoIds = mutableSetOf<Long>()
-        childrenLightViews.forEach {
-            val curAllParentIds = TodoStore.getAllOrderedParentIdsOf(it.getId()!!)
-            neededAllLevelParentTodoIds.addAll(curAllParentIds)
+    private fun transformToLists(childrenLights: List<TodoLightProjection>): TodoLeavesAndBranchesDto {
+        val neededAllLevelParentTodoIds = childrenLights.flatMap {
+            complexRepo.getOrderedParentIdsOf(it.getId())
         }
-        val resultTodos = childrenLightViews.toMutableList()
-        if (neededAllLevelParentTodoIds.isNotEmpty()) {
-            val allLevelParentTodos = todoRepository.getAllShallowTodosByIds(neededAllLevelParentTodoIds)
-            resultTodos.addAll(allLevelParentTodos)
-        }
+        val resultTodos = childrenLights + (neededAllLevelParentTodoIds
+            .takeIf { it.isNotEmpty() }
+            ?.let {
+                complexRepo
+                    .repository
+                    .getAllTodoLightsByIds(neededAllLevelParentTodoIds)
+            }
+            ?: emptyList())
         return extractPrioritizedTodosList(resultTodos)
     }
 
-    // TODO optimize data fetching
-    fun updateTodo(todoId: Long, updateTodoDto: UpdateTodoDto): LightTodoDto? {
-        val updatedTodo = loadTodo(todoId)
+    @Transactional
+    fun updateTodo(todoId: Long, updateTodoDto: TodoUpdateDto): TodoLightDto? {
+        val updatedTodo = complexRepo.repository.findById(todoId).orElse(null)
+            ?: return null
         var statusChanged = false
-        if (updatedTodo != null) {
-            // update general information
-            if (updateTodoDto.general != null) {
-                updatedTodo.name = updateTodoDto.general.name
-                updatedTodo.priority = updateTodoDto.general.priority
-                // Can not change status of the parent directly
-                val directChildrenIds = TodoStore.getDirectChildrenOf(todoId)
-                if (directChildrenIds.isEmpty()) {
-                    statusChanged = updatedTodo.status != updateTodoDto.general.status
-                    updatedTodo.status = updateTodoDto.general.status
-                }
-            }
-            if (updateTodoDto.description != null) {
-                updatedTodo.description = updateTodoDto.description
-            }
-            updatedTodo.interactedOn = OffsetDateTime.now().asUtc
-            todoRepository.save(updatedTodo)
-            val allOrderedParentIds = TodoStore.getAllOrderedParentIdsOf(updatedTodo.id!!)
-            // also upgrade statuses of the parents
-            if (statusChanged) {
-                correctAllParentStatuses(updatedTodo, allOrderedParentIds)
-            }
-            return updatedTodo.toLightDto()
+        // update general information
+        if (updateTodoDto.general != null) {
+            updatedTodo.name = updateTodoDto.general.name
+            updatedTodo.priority = updateTodoDto.general.priority
+            statusChanged = updatedTodo.status != updateTodoDto.general.status
+            updatedTodo.status = updateTodoDto.general.status
         }
-        return null
+        if (updateTodoDto.description != null) {
+            updatedTodo.description = updateTodoDto.description
+        }
+        updatedTodo.interactedOn = OffsetDateTime.now().asUtc
+        complexRepo.save(updatedTodo)
+        if (statusChanged) {
+            correctAllParentStatuses(todoId, updatedTodo.status)
+        }
+        return updatedTodo.toDto()
     }
 
     @Transactional
-    fun moveTodo(moveTodoDto: MoveTodoDto) {
-        if (moveTodoDto.todoId == moveTodoDto.parentId) {
+    fun moveTodo(moveDto: TodoMoveDto) {
+        if (
+            moveDto.todoId == moveDto.parentId
+            || !complexRepo.repository.existsById(moveDto.todoId)
+        ) {
             return
         }
-        val movingTodo = loadTodo(moveTodoDto.todoId)
-        val finalParentTodo = if (moveTodoDto.parentId != null) loadTodo(moveTodoDto.parentId) else TODO_ROOT
-        if (movingTodo != null && finalParentTodo != null) {
-            if (finalParentTodo.id == TODO_ROOT.id) {
-                movingTodo.parent = null
-                todoRepository.save(movingTodo)
-            } else {
-                // Eliminate circular dependencies
-                val finalParentParentIds = TodoStore.getAllOrderedParentIdsOf(finalParentTodo.id!!)
-                if (finalParentParentIds.contains(movingTodo.id)) {
-                    throw CircularTodoDependencyException(
-                        finalParentId = finalParentTodo.id!!,
-                        movingTodoId = movingTodo.id!!
-                    )
-                }
-                movingTodo.parent = finalParentTodo
-                todoRepository.save(movingTodo)
+        if (moveDto.parentId != null) {
+            if (!complexRepo.repository.existsById(moveDto.parentId)) {
+                return
+            }
+            // don't allow circular dependencies
+            val newParentsAllParentIds = complexRepo.getOrderedParentIdsOf(moveDto.parentId)
+            if (newParentsAllParentIds.contains(moveDto.todoId)) {
+                throw CircularTodoDependencyException(
+                    finalParentId = moveDto.parentId,
+                    movingTodoId = moveDto.todoId
+                )
             }
         }
+        complexRepo.updateParent(moveDto.todoId, moveDto.parentId)
     }
 
-    // TODO optimize. Standard delete methods generate too many queries
     @Transactional
     fun deleteTodo(todoId: Long) {
-        val allLevelChildrenIds = TodoStore.getAllLevelChildrenOf(todoId)
-        val resultDeleteIds = mutableListOf<Long>()
-            .apply { add(todoId) }
-            .apply { addAll(allLevelChildrenIds) }
-        todoRepository.deleteAllById(resultDeleteIds)
-        todoHistoryRepository.deleteAllForIds(resultDeleteIds)
+        complexRepo.deleteById(todoId)
     }
 
-    fun deleteAllOutdatedTodos() {
-        TodoStore.deleteAllOutdatedTodos()
+    private fun updateInteractedOn(id: Long): OffsetDateTime {
+        val currentDate = OffsetDateTime.now().asUtc
+        complexRepo.repository.updateInteractedOn(id, currentDate)
+        return currentDate
     }
 
-    fun getTodoHistory(todoId: Long?): TodoHistoryDto? {
-        return if (todoId != null) {
-            todoHistoryRepository.findById(todoId).map { it.toLightDto() }.orElse(null)
-        } else null
-    }
-
-    fun updateTodoHistory(todoId: Long, todoHistoryDto: TodoHistoryDto): TodoHistoryDto? {
-        // try to update
-        val updatingTodoHistory = todoHistoryRepository.findById(todoId).orElse(null)
-        if (todoHistoryDto.records.isNotEmpty()) {
-            if (updatingTodoHistory != null) {
-                updatingTodoHistory.records = mergeHistoryRecordsToPersist(todoHistoryDto.records)
-                todoHistoryRepository.save(updatingTodoHistory)
-                return updatingTodoHistory.toLightDto()
-            } else {
-                // try to create
-                val owningTodoExists = todoRepository.existsById(todoId)
-                if (owningTodoExists) {
-                    val newTodoHistory = TodoHistory(
-                        id = todoId,
-                        records = mergeHistoryRecordsToPersist(todoHistoryDto.records),
-                    )
-                    todoHistoryRepository.save(newTodoHistory)
-                    return newTodoHistory.toLightDto()
-                }
-            }
-        } else {
-            // try to delete
-            if (updatingTodoHistory != null) {
-                todoHistoryRepository.deleteById(todoId)
+    private fun correctAllParentStatuses(id: Long, newStatus: TodoStatus) {
+        val reversedAllOrderedParentIds = complexRepo
+            .getOrderedParentIdsOf(id)
+            .asReversed()
+        for (parentId in reversedAllOrderedParentIds) {
+            val parent = complexRepo.repository.findById(parentId).orElse(null)
+                ?: continue
+            val children = complexRepo.repository.getAllChildrenOf(parentId)
+            val theHighestStatus = children.find { it.status > newStatus }?.status
+                ?: newStatus
+            if (parent.status < theHighestStatus) {
+                complexRepo.repository.updateStatus(parentId, theHighestStatus.name)
             }
         }
-        return null
     }
 
-    private fun loadTodo(todoId: Long?): Todo? = todoId?.let { todoRepository.findById(it).orElse(null) }
+    // open obsidian note for the task (create if it doesn't exist)
+    fun openObsidianNoteForTodo(todoId: Long, uiPageUrl: String) {
+        if (obsidianVaultName == null) {
+            return
+        }
+        if (!complexRepo.repository.existsById(todoId)) {
+            return
+        }
+        val notePath = Paths.get(OBSIDIAN_TODOS_DIRECTORY, "$todoId.md")
+        if (!obsidianVaultHelper.fileExists(notePath)) {
+            val initialContent = """
+                Initial name: ${getLightTodo(todoId)?.name}
+                Link: [$uiPageUrl]($uiPageUrl)
+                
+                
+            """.trimIndent()
+            obsidianVaultHelper.writeToFile(initialContent, notePath)
+        }
+        // open note via system command
+        val process = ProcessBuilder("cmd.exe", "/c", "start", makeObsidianLinkFor(todoId))
+            .redirectErrorStream(true)
+            .start()
+        val exitCode = process.waitFor()
+        println("Obsidian process exited with code $exitCode")
+    }
 
-    // TODO: optimize data fetching
-    private fun correctAllParentStatuses(todo: Todo, orderedParentIds: List<Long>) {
-        val allOrderedParentLightViews = LinkedList<TodoLightView>()
-        val allParentLightViews = todoRepository.getAllShallowTodosByIds(orderedParentIds)
-        orderedParentIds.forEach { id ->
-            val parentView = allParentLightViews.find { it.getId() == id }
-            allOrderedParentLightViews.addLast(parentView)
+    private fun makeObsidianLinkFor(todoId: Long): String {
+        if (obsidianVaultName == null) {
+            return ""
         }
-        var curAlreadyConsideredChildId = todo.id!!
-        var theHighestStatus = todo.status
-        while (allOrderedParentLightViews.isNotEmpty()) {
-            // Get not considered children of the current parent
-            val curParentLightView = allOrderedParentLightViews.pollLast()!!
-            val directNotConsideredChildrenIds = TodoStore
-                .getDirectChildrenOf(curParentLightView.getId()!!)
-                .filter { it != curAlreadyConsideredChildId }
-            val curNotConsideredChildrenLightViews = if (directNotConsideredChildrenIds.isNotEmpty())
-                todoRepository.getAllShallowTodosByIds(directNotConsideredChildrenIds)
-            else
-                emptyList()
-            // Find the highest status among the children
-            for (child in curNotConsideredChildrenLightViews) {
-                if (theHighestStatus.priority < child.getStatus().priority) {
-                    theHighestStatus = child.getStatus()
-                }
-            }
-            // Any parent must have the highest status from its children
-            if (curParentLightView.getStatus() != theHighestStatus) {
-                val curParentTodo = todoRepository.findById(curParentLightView.getId()!!).get()
-                curParentTodo.status = theHighestStatus
-                todoRepository.save(curParentTodo)
-            }
-            curAlreadyConsideredChildId = curParentLightView.getId()!!
-        }
+        // return obsidian://open?vault=Test%20Vault"&"file=zaval-todos-info/6
+        val encodedVaultName = obsidianVaultName!!.replace(" ", "%20")
+        val encodedFilename = "$OBSIDIAN_TODOS_DIRECTORY/$todoId".replace(" ", "%20")
+        return "obsidian://open?vault=$encodedVaultName\"&\"file=$encodedFilename"
     }
 }

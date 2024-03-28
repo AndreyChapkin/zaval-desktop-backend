@@ -16,7 +16,7 @@ allOpen {
 }
 
 group = "org.home.zaval"
-version = "0.0.1-SNAPSHOT"
+version = "0.0.1"
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 repositories {
@@ -30,11 +30,8 @@ dependencies {
 
     // db
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    if (project.hasProperty("isLocal")) {
-        implementation("org.postgresql:postgresql:42.6.0")
-    } else {
-        implementation("org.apache.derby:derby")
-    }
+    implementation("org.postgresql:postgresql:42.6.0")
+    runtimeOnly("org.flywaydb:flyway-core")
 
     // region Kotlin specifics
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")

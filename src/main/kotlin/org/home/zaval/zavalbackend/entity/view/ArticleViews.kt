@@ -1,1 +1,0 @@
-package org.home.zaval.zavalbackend.entity.view

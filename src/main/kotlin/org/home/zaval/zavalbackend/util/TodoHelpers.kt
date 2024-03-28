@@ -1,145 +1,60 @@
 package org.home.zaval.zavalbackend.util
 
 import org.home.zaval.zavalbackend.dto.todo.*
-import org.home.zaval.zavalbackend.entity.Todo
-import org.home.zaval.zavalbackend.entity.TodoHistory
-import org.home.zaval.zavalbackend.entity.TodoLightView
-import org.home.zaval.zavalbackend.entity.value.TodoStatus
+import org.home.zaval.zavalbackend.entity.projection.TodoLightProjection
 
-const val TODO_HISTORY_DELIMITER = "<;>"
-
-val TODO_ROOT: Todo = Todo(
-    id = -1000,
-    name = "Root",
-    status = TodoStatus.BACKLOG,
-)
-
-// TODO get rid of
-fun TodoLightView.toLightDto() = LightTodoDto(
-    id = this.getId() ?: -100,
-    name = this.getName(),
-    status = this.getStatus(),
-    priority = this.getPriority(),
-    parentId = this.getParentId(),
-    interactedOn = this.getInteractedOn().asUtc.asStringFormattedWithISO8601withOffset()
-)
-
-fun Todo.toLightDto() = LightTodoDto(
-    id = this.id!!,
-    name = this.name,
-    priority = this.priority,
-    status = this.status,
-    parentId = this.parent?.id,
-    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset()
-)
-
-fun Todo.toDetailedDto(parents: List<LightTodoDto>, children: List<LightTodoDto>) = DetailedTodoDto(
-    id = this.id!!,
-    name = this.name,
-    description = this.description,
-    priority = this.priority,
-    status = this.status,
-    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset(),
-    parents = parents,
-    children = children
-)
-
-fun Todo.toFullDto() = FullTodoDto(
-    id = this.id!!,
-    name = this.name,
-    description = this.description,
-    priority = this.priority,
-    parentId = this.parent?.takeIf { it.id != TODO_ROOT.id }?.id,
-    status = this.status,
-    createdOn = this.createdOn.asStringFormattedWithISO8601withOffset(),
-    interactedOn = this.interactedOn.asStringFormattedWithISO8601withOffset(),
-)
-
-fun CreateTodoDto.toEntity() = Todo(
-    id = null,
-    name = this.name,
-    status = this.status,
-    parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
-        Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
-    }
-)
-
-fun LightTodoDto.toEntity() = Todo(
-    id = null,
-    name = this.name,
-    status = this.status,
-    parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
-        Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
-    }
-)
-
-fun FullTodoDto.toEntity() = Todo(
-    id = null,
-    name = this.name,
-    priority = this.priority,
-    description = this.description,
-    status = this.status,
-    parent = this.parentId?.takeIf { it != TODO_ROOT.id }?.let {
-        Todo(id = this.parentId, name = "", status = TodoStatus.BACKLOG)
-    },
-    createdOn = this.createdOn.asOffsetDateTimeFromISO8601WithOffset(),
-    interactedOn = this.interactedOn.asOffsetDateTimeFromISO8601WithOffset(),
-)
-
-fun TodoHistory.toLightDto() = TodoHistoryDto(
-    todoId = this.id!!,
-    records = extractTodoRecords(this.records)
-)
-
-fun extractTodoRecords(records: String) = records.split(TODO_HISTORY_DELIMITER)
-
-fun mergeHistoryRecordsToPersist(records: List<String>) = records.joinToString(TODO_HISTORY_DELIMITER)
-
-fun extractPrioritizedTodosList(todoLightViews: List<TodoLightView>): TodosListDto {
-    val allIdsAndTodos = mutableMapOf<Long, TodoLightView>()
-    val leaveIdsAndTodos = mutableMapOf<Long, TodoLightView>()
+fun extractPrioritizedTodosList(todoLights: List<TodoLightProjection>): TodoLeavesAndBranchesDto {
+    val leafIdsSet = mutableSetOf<Long>()
     val parentIdsSet = mutableSetOf<Long>()
-    todoLightViews.forEach {
-        val parentId = it.getParentId()
-        allIdsAndTodos[it.getId()!!] = it
-        if (parentId != null) {
+    val allIdsAndTodos = todoLights.associateBy {
+        // track the parent and exclude from leaves
+        it.getParentId()?.let { parentId ->
             parentIdsSet.add(parentId)
+            leafIdsSet.remove(parentId)
         }
-        if (!parentIdsSet.contains(it.getId()!!)) {
-            leaveIdsAndTodos[it.getId()!!] = it
+        // if it was not previously noticed as parent then it is a leaf by default
+        if (!parentIdsSet.contains(it.getId())) {
+            leafIdsSet.add(it.getId())
         }
-        leaveIdsAndTodos.remove(parentId)
+        // the association key
+        it.getId()
     }
-    var idSequence = 0L
-    val resultParentBranchesMap: MutableMap<Long, List<LightTodoDto>> = mutableMapOf()
-    val resultTodosList: MutableList<TodoAndParentBranchIdDto> = mutableListOf()
-    val startParentIdAndParentsListIdMap: MutableMap<Long, Long> = mutableMapOf()
-    leaveIdsAndTodos.values.forEach { value ->
-        var parentsListId = startParentIdAndParentsListIdMap[value.getParentId()]
-        if (parentsListId == null) {
-            val parentsList = mutableListOf<LightTodoDto>()
-            var curParent = allIdsAndTodos[value.getParentId()]
-            while (curParent != null) {
-                parentsList.add(curParent.toLightDto())
-                curParent = allIdsAndTodos[curParent.getParentId()]
-            }
-            if (parentsList.isNotEmpty()) {
-                parentsListId = idSequence++
-                resultParentBranchesMap[parentsListId] = parentsList.reversed()
-                startParentIdAndParentsListIdMap[value.getParentId()!!] = parentsListId
+    var branchIdSequence = 0L
+    val resultParentBranchesMap: MutableMap<Long, List<TodoLightDto>> = mutableMapOf()
+    val resultTodoLeaves: MutableList<TodoLeafWithBranchIdDto> = mutableListOf()
+    val startIdToBranchIdMap: MutableMap<Long, Long> = mutableMapOf()
+    leafIdsSet.forEach { leafId ->
+        val leafTodo = allIdsAndTodos[leafId]!!
+        val startParentId = leafTodo.getParentId()
+        var parentBranchId: Long? = null
+        if (startParentId != null) {
+            parentBranchId = startIdToBranchIdMap[startParentId]
+            if (parentBranchId == null) {
+                // Construct branch
+                val parentsBranch = mutableListOf<TodoLightDto>()
+                var curParent = allIdsAndTodos[startParentId]
+                while (curParent != null) {
+                    parentsBranch.add(curParent.toDto())
+                    curParent = allIdsAndTodos[curParent.getParentId()]
+                }
+                if (parentsBranch.isNotEmpty()) {
+                    parentBranchId = branchIdSequence++
+                    resultParentBranchesMap[parentBranchId] = parentsBranch.reversed()
+                    startIdToBranchIdMap[startParentId] = parentBranchId
+                }
             }
         }
-        resultTodosList.add(
-            TodoAndParentBranchIdDto(
-                todo = value.toLightDto(),
-                parentBranchId = parentsListId
+        resultTodoLeaves.add(
+            TodoLeafWithBranchIdDto(
+                leafTodo = leafTodo.toDto(),
+                parentBranchId = parentBranchId
             )
         )
     }
-    val sortedResultTodosList = resultTodosList.toMutableList().apply {
+    val sortedResultTodosList = resultTodoLeaves.toMutableList().apply {
         sortByDescending {
-            it.todo.priority
+            it.leafTodo.priority
         }
     }
-    return TodosListDto(todos = sortedResultTodosList, parentBranchesMap = resultParentBranchesMap)
+    return TodoLeavesAndBranchesDto(leafTodos = sortedResultTodosList, parentBranchesMap = resultParentBranchesMap)
 }

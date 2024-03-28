@@ -1,57 +1,42 @@
 package org.home.zaval.zavalbackend.repository
 
 import org.home.zaval.zavalbackend.entity.Article
-import org.home.zaval.zavalbackend.entity.ArticleLabel
-import org.home.zaval.zavalbackend.entity.LabelToArticleConnection
-import org.springframework.data.domain.PageRequest
+import org.home.zaval.zavalbackend.entity.projection.ArticleLightProjection
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
-import org.springframework.data.repository.CrudRepository
 import org.springframework.data.repository.PagingAndSortingRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import java.time.OffsetDateTime
 
 
 @Repository
 interface ArticleRepository : PagingAndSortingRepository<Article, Long> {
 
     @Query(
-        "select a from Article a " +
-                "where upper(title) like upper(:PATTERN) or upper(contentTitles) like upper(:PATTERN)"
+        "select id, title, interacted_on as interactedOn from ARTICLES where id in :IDS",
+        nativeQuery = true
     )
-    fun findAllArticlesWithTitleFragment(@Param("PATTERN") pattern: String): List<Article>
+    fun findArticleLightsByIds(@Param("IDS") ids: Iterable<Long>): List<ArticleLightProjection>
 
-    @Query("select a from Article a where a.id in :IDS")
-    fun findByIds(@Param("IDS") ids: Collection<Long>): List<Article>
-}
+    @Query(
+        "select id, title, interacted_on as interactedOn from ARTICLES",
+        nativeQuery = true
+    )
+    fun findArticleLightsByPage(pageable: Pageable): Page<ArticleLightProjection>
 
-@Repository
-interface ArticleLabelRepository : CrudRepository<ArticleLabel, Long> {
+    @Query(
+        "select id, title, interacted_on as interactedOn from ARTICLES where upper(title) like upper(:PATTERN)",
+        nativeQuery = true
+    )
+    fun findAllArticleLightsWithTitleFragment(@Param("PATTERN") pattern: String): List<ArticleLightProjection>
 
-    @Query("select al from ArticleLabel al where upper(al.name) like upper(:PATTERN)")
-    fun findLabelsWithNameFragment(@Param("PATTERN") pattern: String): List<ArticleLabel>
-}
-
-@Repository
-interface LabelToArticleConnectionRepository : CrudRepository<LabelToArticleConnection, Long> {
-
-    @Query("select c from LabelToArticleConnection c where c.labelId in :LABEL_IDS")
-    fun findConnectionsWithLabelIds(@Param("LABEL_IDS") labelIds: Iterable<Long>): List<LabelToArticleConnection>
-
-    @Query("select c from LabelToArticleConnection c where c.articleId = :ARTICLE_ID")
-    fun findConnectionsWithArticleId(@Param("ARTICLE_ID") articleId: Long): List<LabelToArticleConnection>
-
-    @Query("select c from LabelToArticleConnection c where c.labelId = :LABEL_ID and c.articleId = :ARTICLE_ID")
-    fun findConnectionWithLabelAndArticleIds(
-        @Param("LABEL_ID") labelId: Long,
-        @Param("ARTICLE_ID") articleId: Long
-    ): LabelToArticleConnection?
+    @Query("select content from Article where id = :id")
+    fun getArticleContentById(@Param("id") id: Long): String?
 
     @Modifying
-    @Query("delete from LabelToArticleConnection c where c.labelId = :LABEL_ID")
-    fun deleteAllConnectionsWithLabelId(@Param("LABEL_ID") labelId: Long)
-
-    @Modifying
-    @Query("delete from LabelToArticleConnection c where c.articleId = :ARTICLE_ID")
-    fun deleteAllConnectionsWithArticleId(@Param("ARTICLE_ID") articleId: Long)
+    @Query("UPDATE ARTICLES SET interacted_on = :interactedOn WHERE id = :id", nativeQuery = true)
+    fun updateInteractedOn(@Param("id") id: Long, @Param("interactedOn") interactedOn: OffsetDateTime)
 }

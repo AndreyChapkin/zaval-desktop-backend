@@ -2,33 +2,16 @@ package org.home.zaval.zavalbackend.entity
 
 import org.home.zaval.zavalbackend.util.asUtc
 import java.time.OffsetDateTime
-import javax.persistence.Column
-import javax.persistence.Entity
-import javax.persistence.Id
+import javax.persistence.*
 
 @Entity
+@Table(name = "ARTICLES")
 class Article(
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "general_sequence_generator")
+    @SequenceGenerator(name = "general_sequence_generator", sequenceName = "article_seq", allocationSize = 1)
     var id: Long?,
-    @Column(length = 1000)
     var title: String,
-    @Column(length = 20000)
-    var contentTitles: String = "",
+    var content: String,
     var interactedOn: OffsetDateTime = OffsetDateTime.now().asUtc,
-)
-
-@Entity
-class ArticleLabel(
-    @Id
-    var id: Long?,
-    @Column(length = 1000)
-    var name: String,
-)
-
-@Entity
-class LabelToArticleConnection(
-    @Id
-    var id: Long,
-    var articleId: Long,
-    var labelId: Long,
 )

@@ -1,4 +1,7 @@
 # swagger
+server:
+  port: 8081
+
 springdoc:
   swagger-ui.path: /swagger-ui.html
   api-docs.path: /api-docs
@@ -6,13 +9,23 @@ springdoc:
   paths-to-match: /**
 
 spring:
-  jpa:
-    generate-ddl: true
+  datasource:
+    url: jdbc:postgresql://localhost:5432/zaval_backend
+    username: zaval_backend
+    password: 1
+    driver-class-name: org.postgresql.Driver
+  properties:
     hibernate:
-      ddl-auto: update
+      dialect: org.hibernate.dialect.PostgreSQLDialect
+  jpa:
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false
   web:
     resources:
       static-locations: file:./zaval-frontend
+  flyway:
+    locations: "classpath:db/migration"
