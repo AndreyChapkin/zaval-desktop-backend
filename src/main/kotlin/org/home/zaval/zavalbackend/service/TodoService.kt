@@ -202,7 +202,7 @@ class TodoService(
             val children = complexRepo.repository.getAllChildrenOf(parentId)
             val theHighestStatus = children.find { it.status > newStatus }?.status
                 ?: newStatus
-            if (parent.status < theHighestStatus) {
+            if (parent.status != theHighestStatus) {
                 complexRepo.repository.updateStatus(parentId, theHighestStatus.name)
             }
         }
