@@ -235,7 +235,7 @@ class TodoService(
             obsidianVaultHelper.writeToFile(initialContent, notePath)
         }
         // open note via system command
-        val process = ProcessBuilder("cmd.exe", "/c", "start", makeObsidianLinkFor(todoId))
+        val process = ProcessBuilder("cmd.exe", "/c", "start", makeObsidianLinkFor(notePath))
             .redirectErrorStream(true)
             .start()
         val exitCode = process.waitFor()
@@ -260,13 +260,16 @@ class TodoService(
         return Paths.get(OBSIDIAN_TODOS_DIRECTORY, "$todoId - $todoName.md")
     }
 
-    private fun makeObsidianLinkFor(todoId: Long): String {
+    private fun makeObsidianLinkFor(notePath: Path): String {
         if (obsidianVaultName == null) {
             return ""
         }
         // return obsidian://open?vault=Test%20Vault"&"file=zaval-todos-info/6
         val encodedVaultName = obsidianVaultName!!.replace(" ", "%20")
-        val encodedFilename = "$OBSIDIAN_TODOS_DIRECTORY/$todoId".replace(" ", "%20")
+        val encodedFilename = Paths.get(OBSIDIAN_TODOS_DIRECTORY)
+            .resolve(notePath.fileName)
+            .toString()
+            .replace(" ", "%20")
         return "obsidian://open?vault=$encodedVaultName\"&\"file=$encodedFilename"
     }
 }
