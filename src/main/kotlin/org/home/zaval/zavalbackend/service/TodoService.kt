@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.time.OffsetDateTime
 import javax.servlet.http.HttpServletRequest
@@ -139,8 +140,10 @@ class TodoService(
         val updatedTodo = complexRepo.repository.findById(todoId).orElse(null)
             ?: return null
         var statusChanged = false
+        var needToRenameObsidianNote = false
         // update general information
         if (updateTodoDto.general != null) {
+            needToRenameObsidianNote = updatedTodo.name != updateTodoDto.general.name
             updatedTodo.name = updateTodoDto.general.name
             updatedTodo.priority = updateTodoDto.general.priority
             statusChanged = updatedTodo.status != updateTodoDto.general.status
@@ -153,6 +156,10 @@ class TodoService(
         complexRepo.save(updatedTodo)
         if (statusChanged) {
             correctAllParentStatuses(todoId, updatedTodo.status)
+        }
+        // rename obsidian note if needed
+        if (needToRenameObsidianNote) {
+            renameObsidianNoteFor(todoId, updateTodoDto.general!!.name)
         }
         return updatedTodo.toDto()
     }
@@ -184,6 +191,10 @@ class TodoService(
     @Transactional
     fun deleteTodo(todoId: Long) {
         complexRepo.deleteById(todoId)
+        val notePath = findNoteFor(todoId)
+        if (notePath != null) {
+            obsidianVaultHelper.removeFile(notePath)
+        }
     }
 
     private fun updateInteractedOn(id: Long): OffsetDateTime {
@@ -213,13 +224,10 @@ class TodoService(
         if (obsidianVaultName == null) {
             return
         }
-        if (!complexRepo.repository.existsById(todoId)) {
-            return
-        }
-        val notePath = Paths.get(OBSIDIAN_TODOS_DIRECTORY, "$todoId.md")
+        val todoName = getLightTodo(todoId)?.name ?: return
+        val notePath = makeNotePath(todoId, todoName)
         if (!obsidianVaultHelper.fileExists(notePath)) {
             val initialContent = """
-                Initial name: ${getLightTodo(todoId)?.name}
                 Link: [$uiPageUrl]($uiPageUrl)
                 
                 
@@ -232,6 +240,24 @@ class TodoService(
             .start()
         val exitCode = process.waitFor()
         println("Obsidian process exited with code $exitCode")
+    }
+
+    private fun renameObsidianNoteFor(todoId: Long, newName: String) {
+        if (obsidianVaultName == null) {
+            return
+        }
+        val curNotePath = findNoteFor(todoId) ?: return
+        val newNotePath = makeNotePath(todoId, newName)
+        obsidianVaultHelper.renameFile(curNotePath, newNotePath)
+    }
+
+    private fun findNoteFor(todoId: Long): Path? {
+        return obsidianVaultHelper.allFilenamesInDir(Paths.get(OBSIDIAN_TODOS_DIRECTORY))
+            .find { it.fileName.name.startsWith("$todoId - ") }
+    }
+
+    private fun makeNotePath(todoId: Long, todoName: String): Path {
+        return Paths.get(OBSIDIAN_TODOS_DIRECTORY, "$todoId - $todoName.md")
     }
 
     private fun makeObsidianLinkFor(todoId: Long): String {
