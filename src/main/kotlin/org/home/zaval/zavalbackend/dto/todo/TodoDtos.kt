@@ -113,6 +113,11 @@ class TodoUpdateDto(
     val description: String?
 )
 
+class TodoUpdatePriorityDto(
+    val id: Long,
+    val priority: Int,
+)
+
 class TodoUpdateGeneralDto(
     val name: String,
     val status: TodoStatus,
