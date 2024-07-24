@@ -33,6 +33,14 @@ class TodoController(
         return ResponseEntity.ok(todoService.updateTodo(todoId.toLong(), updateTodoDto))
     }
 
+    @PatchMapping("/all/priority", consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE])
+    fun updatePriorityForAllTodos(
+        @RequestBody updateTodoDto: List<TodoUpdatePriorityDto>
+    ): ResponseEntity<Unit> {
+        todoService.updatePriorityForAllTodos(updateTodoDto)
+        return ResponseEntity.ok(null)
+    }
+
     @DeleteMapping("/{id}")
     fun deleteTodo(@PathVariable("id") todoId: String): ResponseEntity<Unit> {
         todoService.deleteTodo(todoId.toLong())

@@ -34,8 +34,10 @@ class TodoService(
 
     @Transactional
     fun createTodo(todoDto: TodoCreateDto): TodoLightDto {
-        val newTodo = todoDto.toEntity()
-        return complexRepo.save(newTodo).toDto()
+        var newTodo = todoDto.toEntity()
+        newTodo = complexRepo.save(newTodo)
+        correctAllParentStatuses(newTodo.id!!, newTodo.status)
+        return newTodo.toDto()
     }
 
     fun getLightTodo(id: Long?): TodoLightDto? {
@@ -162,6 +164,17 @@ class TodoService(
             renameObsidianNoteFor(todoId, updateTodoDto.general!!.name)
         }
         return updatedTodo.toDto()
+    }
+
+    @Transactional
+    fun updatePriorityForAllTodos(updatePriorityDto: List<TodoUpdatePriorityDto>) {
+        val updateTodos = complexRepo.repository.findAllById(updatePriorityDto.map { it.id })
+        for (todo in updateTodos) {
+            val newPriority = updatePriorityDto.find { it.id == todo.id }?.priority
+            if (newPriority != null) {
+                todo.priority = newPriority
+            }
+        }
     }
 
     @Transactional
